@@ -2,6 +2,7 @@ import type { AppUser } from "@prisma/client";
 import type { User } from "@supabase/supabase-js";
 
 import { isEmailAllowed } from "@/lib/env";
+import { log } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 import { findAppUserByAuthSubject, upsertAppUser } from "@/server/repositories/app-user-repository";
 import type { ActionResult } from "@/types/action-result";
@@ -38,7 +39,10 @@ export const syncCurrentAppUser = async (): Promise<ActionResult<AppUser>> => {
     });
 
     return ok(appUser);
-  } catch {
+  } catch (error) {
+    log("error", "app user upsert failed", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
     return err("DB_ERROR", "ユーザー情報の保存に失敗しました");
   }
 };

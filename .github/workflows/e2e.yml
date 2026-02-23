@@ -9,7 +9,6 @@ on:
 
 jobs:
   playwright:
-    if: ${{ secrets.DATABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' && secrets.ALLOW_EMAILS != '' && secrets.TEST_USER_EMAIL != '' && secrets.TEST_USER_PASSWORD != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -21,21 +20,45 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check required secrets
+        id: precheck
+        run: |
+          missing=0
+          for v in DATABASE_URL NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY ALLOW_EMAILS TEST_USER_EMAIL TEST_USER_PASSWORD; do
+            if [ -z "${!v}" ]; then
+              echo "Missing secret: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Skip E2E (secrets are missing)
+        if: ${{ steps.precheck.outputs.ready != 'true' }}
+        run: echo "Skipping E2E because required secrets are not configured."
       - uses: actions/setup-node@v4
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
         with:
           node-version: 22
       - name: Enable Corepack
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: corepack enable
       - name: Install dependencies
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm install --frozen-lockfile=false
       - name: Install Playwright browsers
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm exec playwright install --with-deps chromium
       - name: Generate Prisma client
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm prisma:generate
       - name: Run Playwright tests
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm test:e2e
       - name: Upload Playwright report
-        if: always()
+        if: ${{ always() && steps.precheck.outputs.ready == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

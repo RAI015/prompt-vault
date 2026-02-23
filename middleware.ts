@@ -8,6 +8,13 @@ const protectedPath = "/app/prompts";
 
 export const middleware = async (request: NextRequest) => {
   let response = NextResponse.next({ request });
+  const redirectWithCookies = (url: URL) => {
+    const redirectResponse = NextResponse.redirect(url);
+    for (const cookie of response.cookies.getAll()) {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    }
+    return redirectResponse;
+  };
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
@@ -34,10 +41,16 @@ export const middleware = async (request: NextRequest) => {
 
   if (user && !isEmailAllowed(user.email)) {
     await supabase.auth.signOut();
+    const isForbiddenLogin =
+      path === "/login" && request.nextUrl.searchParams.get("error") === "forbidden";
+    if (isForbiddenLogin) {
+      return response;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("error", "forbidden");
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (path.startsWith(protectedPath) && !user) {

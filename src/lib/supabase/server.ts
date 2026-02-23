@@ -12,8 +12,13 @@ export const createClient = async () => {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet: Parameters<SetAllCookies>[0]) {
-        for (const cookie of cookiesToSet) {
-          cookieStore.set(cookie.name, cookie.value, cookie.options);
+        try {
+          for (const cookie of cookiesToSet) {
+            cookieStore.set(cookie.name, cookie.value, cookie.options);
+          }
+        } catch {
+          // Server Components では cookies を更新できないため無視する。
+          // セッション更新は middleware 側で処理される。
         }
       },
     },

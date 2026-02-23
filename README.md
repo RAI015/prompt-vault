@@ -111,6 +111,7 @@ CREATE POLICY "owner_only" ON "Prompt"
 ### GitHub OAuth E2E未対応
 
 GitHub OAuthは外部UI自動化が不安定なため、E2Eはメール/パスワード認証で実施しています。
+また、クリップボード確認は環境差分で不安定になりやすいため、E2Eでは `navigator.clipboard.writeText` をスタブしてUI挙動を検証しています。
 
 将来対応方針:
 

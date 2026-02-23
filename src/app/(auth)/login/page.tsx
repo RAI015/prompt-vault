@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
-import { createClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/env";
+import { createClient } from "@/lib/supabase/server";
 
 const LoginPage = async ({
   searchParams,

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { PromptVaultClient } from "@/components/prompts/prompt-vault-client";
-import { listMyPrompts } from "@/server/services/prompt-service";
 import { syncCurrentAppUser } from "@/server/services/auth-service";
+import { listMyPrompts } from "@/server/services/prompt-service";
 
 const PromptsPage = async () => {
   const userResult = await syncCurrentAppUser();

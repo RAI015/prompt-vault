@@ -1,4 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config as loadEnv } from "dotenv";
+
+loadEnv({ path: ".env.test.local" });
+
+if (!process.env.TEST_USER_EMAIL || !process.env.TEST_USER_PASSWORD) {
+  throw new Error("Missing TEST_USER_EMAIL or TEST_USER_PASSWORD in .env.test.local");
+}
 
 export default defineConfig({
   testDir: "./tests/e2e",

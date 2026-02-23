@@ -4,6 +4,7 @@ import type { Prompt } from "@prisma/client";
 import { Copy, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +24,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
 import { parseTagCsv, promptSchema } from "@/schemas/prompt";
 import {
@@ -48,12 +48,18 @@ const toPromptInputState = (prompt?: Prompt): PromptInputState => ({
 export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[] }) => {
   const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts);
   const [search, setSearch] = useState("");
-  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(initialPrompts[0]?.id ?? null);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(
+    initialPrompts[0]?.id ?? null,
+  );
   const [isCreating, setIsCreating] = useState(initialPrompts.length === 0);
   const [isEditing, setIsEditing] = useState(false);
-  const [formState, setFormState] = useState<PromptInputState>(() => toPromptInputState(initialPrompts[0]));
+  const [formState, setFormState] = useState<PromptInputState>(() =>
+    toPromptInputState(initialPrompts[0]),
+  );
   const [formError, setFormError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ title?: string; body?: string; tags?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; body?: string; tags?: string }>(
+    {},
+  );
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [copyStatus, setCopyStatus] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -304,7 +310,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 <Input
                   id="title"
                   value={formState.title}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, title: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({ ...prev, title: event.target.value }))
+                  }
                 />
                 <ErrorText>{fieldErrors.title}</ErrorText>
               </div>
@@ -317,7 +325,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                   id="body"
                   rows={14}
                   value={formState.body}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, body: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({ ...prev, body: event.target.value }))
+                  }
                 />
                 <ErrorText>{fieldErrors.body}</ErrorText>
               </div>
@@ -330,7 +340,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                   id="tags"
                   placeholder="例: design, prompt, gpt"
                   value={formState.tagsCsv}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, tagsCsv: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({ ...prev, tagsCsv: event.target.value }))
+                  }
                 />
                 <ErrorText>{fieldErrors.tags}</ErrorText>
               </div>
@@ -407,7 +419,8 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">レンダリング結果</h3>
                   <Button variant="outline" size="sm" onClick={onCopy}>
-                    <Copy className="mr-2 h-4 w-4" />コピー
+                    <Copy className="mr-2 h-4 w-4" />
+                    コピー
                   </Button>
                 </div>
                 <ScrollArea className="max-h-64 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
@@ -420,12 +433,14 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={startEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />編集
+                  <Pencil className="mr-2 h-4 w-4" />
+                  編集
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />削除
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      削除
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>

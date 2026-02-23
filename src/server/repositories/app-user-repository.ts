@@ -22,9 +22,7 @@ export const upsertAppUser = async (input: UpsertAppUserInput): Promise<AppUser>
   });
 };
 
-export const findAppUserByAuthSubject = async (
-  authSubject: string,
-): Promise<AppUser | null> => {
+export const findAppUserByAuthSubject = async (authSubject: string): Promise<AppUser | null> => {
   return prisma.appUser.findUnique({
     where: { authSubject },
   });

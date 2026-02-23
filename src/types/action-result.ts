@@ -3,9 +3,7 @@ export type ActionError = {
   message: string;
 };
 
-export type ActionResult<T> =
-  | { data: T; error: null }
-  | { data: null; error: ActionError };
+export type ActionResult<T> = { data: T; error: null } | { data: null; error: ActionError };
 
 export const ok = <T>(data: T): ActionResult<T> => ({ data, error: null });
 

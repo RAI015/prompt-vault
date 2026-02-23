@@ -3,11 +3,7 @@
 import type { Prompt } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-import {
-  createMyPrompt,
-  deleteMyPrompt,
-  updateMyPrompt,
-} from "@/server/services/prompt-service";
+import { createMyPrompt, deleteMyPrompt, updateMyPrompt } from "@/server/services/prompt-service";
 import type { ActionResult } from "@/types/action-result";
 
 type PromptActionPayload = {

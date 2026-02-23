@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/error-text";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { emailPasswordSchema } from "@/schemas/auth";
 import { createClient } from "@/lib/supabase/client";
+import { emailPasswordSchema } from "@/schemas/auth";
 
 export const LoginForm = ({ initialError }: { initialError?: string }) => {
   const router = useRouter();
@@ -114,7 +114,13 @@ export const LoginForm = ({ initialError }: { initialError?: string }) => {
 
       <div className="my-6 h-px bg-border" />
 
-      <Button className="w-full" variant="outline" type="button" onClick={onGithubLogin} disabled={isPending}>
+      <Button
+        className="w-full"
+        variant="outline"
+        type="button"
+        onClick={onGithubLogin}
+        disabled={isPending}
+      >
         GitHubでログイン
       </Button>
     </div>

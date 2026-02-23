@@ -10,12 +10,13 @@ export const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 export const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
 export const AlertDialogOverlay = ({ className }: { className?: string }) => (
-  <AlertDialogPrimitive.Overlay
-    className={cn("fixed inset-0 z-50 bg-black/30", className)}
-  />
+  <AlertDialogPrimitive.Overlay className={cn("fixed inset-0 z-50 bg-black/30", className)} />
 );
 
-export const AlertDialogContent = ({ children, className }: { children: ReactNode; className?: string }) => (
+export const AlertDialogContent = ({
+  children,
+  className,
+}: { children: ReactNode; className?: string }) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content

@@ -2,6 +2,63 @@
 
 Next.js (App Router) + Supabase Auth + Prisma で作る、個人用の Prompt Vault です。
 
+[![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
+[![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)
+[![e2e](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml)
+
+## 使用技術スタック
+
+- フロントエンド: Next.js（App Router）, React, TypeScript
+- UI: Tailwind CSS, shadcn-ui
+- 認証/DB: Supabase Auth, Supabase Postgres
+- ORM: Prisma
+- バリデーション: Zod
+- テスト: Playwright
+- Lint/Format: Biome
+- パッケージ管理: pnpm
+- インフラ: Vercel
+
+## 動作要件
+
+- Node.js: 22系（CIも `node-version: 22`）
+- pnpm: 10系
+
+## 品質ゲート
+
+ローカルでの推奨チェック:
+
+```bash
+pnpm biome:check
+pnpm build
+pnpm test:e2e
+pnpm gitleaks
+```
+
+CI（GitHub Actions）:
+
+- `quality`: push / pull_request で `pnpm biome:check` と `pnpm build` を実行（`.github/workflows/quality.yml`）
+- `gitleaks`: push / pull_request で常時実行（`.github/workflows/gitleaks.yml`）
+- `e2e`: push / pull_request / manual 実行。必要Secretsが揃っている場合のみ実行（`.github/workflows/e2e.yml`）
+
+## セキュリティと制約
+
+保証すること:
+
+- 認証は Supabase Auth を使用（GitHub OAuth / メール・パスワード）
+- `ALLOW_EMAILS` で許可メールのみ利用可能（未許可はログイン直後にサインアウト）
+- アプリ層で `ownerId` チェックを行い、他ユーザーの Prompt を操作できないように制御
+- `gitleaks` で秘密情報の漏えいを CI で検知
+
+未対応・制約（現状）:
+
+- Supabase Postgres の RLS は未適用（DB層での最終防御は未実装）
+- E2E はメール・パスワード認証中心で、GitHub OAuth の自動E2Eは未対応
+
+リスク:
+
+- 現状はアプリケーション実装に依存したアクセス制御のため、将来的には RLS 導入で DB 側の防御を追加する必要があります
+- `ALLOW_EMAILS` の運用ミス（設定漏れ/更新漏れ）は、意図しないアクセス許可につながる可能性があります
+
 ## 1. セットアップ手順
 
 ```bash

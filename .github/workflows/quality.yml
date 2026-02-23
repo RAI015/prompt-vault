@@ -19,6 +19,8 @@ jobs:
         run: corepack enable
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
       - name: Biome check
         run: pnpm biome:check
       - name: Build

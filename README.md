@@ -36,7 +36,7 @@ pnpm gitleaks
 
 CI（GitHub Actions）:
 
-- `quality`: push / pull_request で `pnpm biome:check` と `pnpm build` を実行（`.github/workflows/quality.yml`）
+- `quality`: push / pull_request で `pnpm prisma:generate` / `pnpm biome:check` / `pnpm build` を実行（`.github/workflows/quality.yml`）
 - `gitleaks`: push / pull_request で常時実行（`.github/workflows/gitleaks.yml`）
 - `e2e`: push / pull_request / manual 実行。必要Secretsが揃っている場合のみ実行（`.github/workflows/e2e.yml`）
 

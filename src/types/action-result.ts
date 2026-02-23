@@ -7,7 +7,7 @@ export type ActionResult<T> = { data: T; error: null } | { data: null; error: Ac
 
 export const ok = <T>(data: T): ActionResult<T> => ({ data, error: null });
 
-export const err = (code: string, message: string): ActionResult<null> => ({
+export const err = <T>(code: string, message: string): ActionResult<T> => ({
   data: null,
   error: { code, message },
 });

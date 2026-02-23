@@ -1,10 +1,8 @@
-type LogLevel = "info" | "warn" | "error";
-
 type LogMeta = Record<string, string | number | boolean | null | undefined>;
 
 const APP_LOG_PREFIX = "[prompt-vault]";
 
-const maskEmail = (email: string | null | undefined): string | null => {
+export const toMaskedEmail = (email: string | null | undefined): string | null => {
   if (!email) {
     return null;
   }
@@ -18,21 +16,16 @@ const maskEmail = (email: string | null | undefined): string | null => {
   return `${local.slice(0, 2)}***@${domain}`;
 };
 
-export const toMaskedEmail = maskEmail;
-
-export const log = (level: LogLevel, message: string, meta?: LogMeta) => {
-  const payload = {
+export const warn = (message: string, meta?: LogMeta) => {
+  console.warn(APP_LOG_PREFIX, {
     message,
     ...meta,
-  };
+  });
+};
 
-  if (level === "info") {
-    console.info(APP_LOG_PREFIX, payload);
-    return;
-  }
-  if (level === "warn") {
-    console.warn(APP_LOG_PREFIX, payload);
-    return;
-  }
-  console.error(APP_LOG_PREFIX, payload);
+export const error = (message: string, meta?: LogMeta) => {
+  console.error(APP_LOG_PREFIX, {
+    message,
+    ...meta,
+  });
 };

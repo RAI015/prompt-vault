@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 
 import { PromptVaultClient } from "@/components/prompts/prompt-vault-client";
-import { log } from "@/lib/log";
+import { error } from "@/lib/log";
 import { syncCurrentAppUser } from "@/server/services/auth-service";
 import { listMyPrompts } from "@/server/services/prompt-service";
 
 const PromptsPage = async () => {
   const userResult = await syncCurrentAppUser();
   if (userResult.error) {
-    log("warn", "prompts page user sync failed", {
+    error("prompts page user sync failed", {
       code: userResult.error.code,
       message: userResult.error.message,
     });
@@ -26,7 +26,7 @@ const PromptsPage = async () => {
 
   const promptsResult = await listMyPrompts();
   if (promptsResult.error) {
-    log("error", "prompts page list failed", {
+    error("prompts page list failed", {
       code: promptsResult.error.code,
       message: promptsResult.error.message,
     });

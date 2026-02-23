@@ -1,0 +1,8 @@
+title = "prompt-vault gitleaks config"
+
+[allowlist]
+description = "allowlist for non-sensitive examples"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.test\.example$'''
+]

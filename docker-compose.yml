@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    # 将来追加予定:
+    # supabase:
+    #   image: supabase/supabase-local

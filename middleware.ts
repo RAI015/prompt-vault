@@ -59,12 +59,6 @@ export const middleware = async (request: NextRequest) => {
     return NextResponse.redirect(url);
   }
 
-  if (path === "/login" && user && isEmailAllowed(user.email)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/app/prompts";
-    return NextResponse.redirect(url);
-  }
-
   return response;
 };
 

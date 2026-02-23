@@ -2,6 +2,7 @@ import { type SetAllCookies, createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { isEmailAllowed } from "@/lib/env";
+import { log, toMaskedEmail } from "@/lib/log";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 
 const protectedPath = "/app/prompts";
@@ -40,6 +41,10 @@ export const middleware = async (request: NextRequest) => {
   const path = request.nextUrl.pathname;
 
   if (user && !isEmailAllowed(user.email)) {
+    log("warn", "middleware deny by allowlist", {
+      path,
+      email: toMaskedEmail(user.email),
+    });
     await supabase.auth.signOut();
     const isForbiddenLogin =
       path === "/login" && request.nextUrl.searchParams.get("error") === "forbidden";
@@ -54,6 +59,7 @@ export const middleware = async (request: NextRequest) => {
   }
 
   if (path.startsWith(protectedPath) && !user) {
+    log("info", "middleware redirect unauthorized to login", { path });
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

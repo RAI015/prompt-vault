@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { type SetAllCookies, createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
@@ -13,7 +13,7 @@ export const updateSession = async (request: NextRequest) => {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: Parameters<SetAllCookies>[0]) {
         for (const cookie of cookiesToSet) {
           request.cookies.set(cookie.name, cookie.value);
         }

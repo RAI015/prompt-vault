@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { type SetAllCookies, createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
@@ -11,7 +11,7 @@ export const createClient = async () => {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: Parameters<SetAllCookies>[0]) {
         for (const cookie of cookiesToSet) {
           cookieStore.set(cookie.name, cookie.value, cookie.options);
         }

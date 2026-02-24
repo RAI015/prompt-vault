@@ -38,14 +38,17 @@ jobs:
       - name: Skip E2E (secrets are missing)
         if: ${{ steps.precheck.outputs.ready != 'true' }}
         run: echo "Skipping E2E because required secrets are not configured."
+      - uses: pnpm/action-setup@v4
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
+        with:
+          version: 10
+          run_install: false
       - uses: actions/setup-node@v4
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         with:
           node-version: 22
           cache: pnpm
-      - name: Enable Corepack
-        if: ${{ steps.precheck.outputs.ready == 'true' }}
-        run: corepack enable
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm install --frozen-lockfile

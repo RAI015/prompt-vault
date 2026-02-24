@@ -55,6 +55,8 @@ jobs:
           test -n "${EMAILS_SQL}" || { echo "No valid emails for cleanup"; exit 1; }
 
           cat > /tmp/cleanup-ci-db.sql <<SQL
+          SET lock_timeout = '5s';
+          SET statement_timeout = '30s';
           DELETE FROM "Prompt"
           WHERE "ownerId" IN (
             SELECT "id" FROM "AppUser" WHERE "email" IN (${EMAILS_SQL})
@@ -63,4 +65,10 @@ jobs:
           WHERE "email" IN (${EMAILS_SQL});
           SQL
 
-          pnpm exec prisma db execute --file /tmp/cleanup-ci-db.sql --url "${DATABASE_URL}"
+          timeout 60s pnpm exec prisma db execute --file /tmp/cleanup-ci-db.sql --url "${DATABASE_URL}" || {
+            code=$?
+            if [ "$code" -eq 124 ]; then
+              echo "Cleanup timed out after 120s (likely DB lock or connection stall)."
+            fi
+            exit "$code"
+          }

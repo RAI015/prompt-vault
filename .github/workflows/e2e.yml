@@ -42,12 +42,21 @@ jobs:
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         with:
           node-version: 22
+          cache: pnpm
       - name: Enable Corepack
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: corepack enable
       - name: Install dependencies
         if: ${{ steps.precheck.outputs.ready == 'true' }}
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
       - name: Install Playwright browsers
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm exec playwright install --with-deps chromium

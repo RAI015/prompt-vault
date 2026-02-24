@@ -40,6 +40,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
       - name: Check database connectivity
         run: |
           cat > /tmp/check-ci-db.sql <<'SQL'

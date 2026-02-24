@@ -37,7 +37,15 @@ jobs:
           fi
       - name: Check database connectivity
         run: |
-          timeout 20s psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -c "SELECT 1;" || {
+          PSQL_DATABASE_URL=$(
+            printf '%s' "${DATABASE_URL}" \
+              | sed -E 's/([?&])pgbouncer=true&/\1/g; s/[?&]pgbouncer=true$//; s/\?&/\?/g; s/\?$//'
+          )
+
+          test -n "${PSQL_DATABASE_URL}" || { echo "Failed to build psql database url"; exit 1; }
+          echo "PSQL_DATABASE_URL=${PSQL_DATABASE_URL}" >> "${GITHUB_ENV}"
+
+          timeout 20s psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -c "SELECT 1;" || {
             code=$?
             if [ "$code" -eq 124 ]; then
               echo "Database connectivity check timed out after 20s."
@@ -46,6 +54,8 @@ jobs:
           }
       - name: Cleanup test data
         run: |
+          test -n "${PSQL_DATABASE_URL}" || { echo "PSQL_DATABASE_URL is required"; exit 1; }
+
           EMAILS_SQL=$(
             echo "${ALLOW_EMAILS}" \
               | tr ',' '\n' \
@@ -69,7 +79,7 @@ jobs:
           WHERE "email" IN (${EMAILS_SQL});
           SQL
 
-          timeout 60s psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f /tmp/cleanup-ci-db.sql || {
+          timeout 60s psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -f /tmp/cleanup-ci-db.sql || {
             code=$?
             if [ "$code" -eq 124 ]; then
               echo "Cleanup timed out after 60s (likely DB lock or connection stall)."

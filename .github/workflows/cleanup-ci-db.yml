@@ -42,15 +42,16 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Check database connectivity
         run: |
-          timeout 20s pnpm exec prisma db execute --stdin --url "${DATABASE_URL}" <<'SQL' || {
+          cat > /tmp/check-ci-db.sql <<'SQL'
+          SELECT 1;
+          SQL
+          timeout 20s pnpm exec prisma db execute --file /tmp/check-ci-db.sql --url "${DATABASE_URL}" || {
             code=$?
             if [ "$code" -eq 124 ]; then
               echo "Database connectivity check timed out after 20s."
             fi
             exit "$code"
           }
-          SELECT 1;
-          SQL
       - name: Cleanup test data
         run: |
           EMAILS_SQL=$(

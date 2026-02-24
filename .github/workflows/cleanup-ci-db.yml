@@ -45,10 +45,10 @@ jobs:
           cat > /tmp/check-ci-db.sql <<'SQL'
           SELECT 1;
           SQL
-          timeout 20s pnpm exec prisma db execute --file /tmp/check-ci-db.sql --url "${DATABASE_URL}" || {
+          timeout 60s pnpm exec prisma db execute --file /tmp/check-ci-db.sql --url "${DATABASE_URL}" || {
             code=$?
             if [ "$code" -eq 124 ]; then
-              echo "Database connectivity check timed out after 20s."
+              echo "Database connectivity check timed out after 60s."
             fi
             exit "$code"
           }

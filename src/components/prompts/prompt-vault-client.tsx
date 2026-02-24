@@ -1,7 +1,7 @@
 "use client";
 
 import type { Prompt } from "@prisma/client";
-import { Copy, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Copy, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -348,9 +348,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={savePrompt} disabled={isPending}>
-                  {isPending ? <Spinner /> : null}
-                  <span className="ml-2">保存</span>
+                <Button onClick={savePrompt} disabled={isPending} className="gap-2">
+                  {isPending ? <Spinner /> : <Save className="h-4 w-4" />}
+                  <span>保存</span>
                 </Button>
                 <Button
                   variant="outline"

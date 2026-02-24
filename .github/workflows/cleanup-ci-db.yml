@@ -1,0 +1,66 @@
+name: cleanup-ci-db
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.CI_CLEANUP_DATABASE_URL }}
+      CI_DATABASE_PROJECT_REF: ${{ secrets.CI_DATABASE_PROJECT_REF }}
+      ALLOW_EMAILS: ${{ secrets.CI_CLEANUP_ALLOW_EMAILS }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required secrets
+        run: |
+          test -n "${DATABASE_URL}" || { echo "CI_CLEANUP_DATABASE_URL is required"; exit 1; }
+          test -n "${CI_DATABASE_PROJECT_REF}" || { echo "CI_DATABASE_PROJECT_REF is required"; exit 1; }
+          test -n "${ALLOW_EMAILS}" || { echo "CI_CLEANUP_ALLOW_EMAILS is required"; exit 1; }
+      - name: Guard target database
+        run: |
+          echo "${DATABASE_URL}" | grep -q "${CI_DATABASE_PROJECT_REF}" || {
+            echo "DATABASE_URL does not match CI_DATABASE_PROJECT_REF";
+            exit 1;
+          }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cleanup test data
+        run: |
+          EMAILS_SQL=$(
+            echo "${ALLOW_EMAILS}" \
+              | tr ',' '\n' \
+              | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+              | sed '/^$/d' \
+              | sed "s/'/''/g" \
+              | sed "s/^/'/;s/$/'/" \
+              | paste -sd, -
+          )
+
+          test -n "${EMAILS_SQL}" || { echo "No valid emails for cleanup"; exit 1; }
+
+          cat > /tmp/cleanup-ci-db.sql <<SQL
+          DELETE FROM "Prompt"
+          WHERE "ownerId" IN (
+            SELECT "id" FROM "AppUser" WHERE "email" IN (${EMAILS_SQL})
+          );
+          DELETE FROM "AppUser"
+          WHERE "email" IN (${EMAILS_SQL});
+          SQL
+
+          pnpm exec prisma db execute --file /tmp/cleanup-ci-db.sql --url "${DATABASE_URL}"

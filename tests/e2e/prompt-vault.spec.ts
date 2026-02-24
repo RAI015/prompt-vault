@@ -4,7 +4,7 @@ const testUserEmail = process.env.TEST_USER_EMAIL;
 const testUserPassword = process.env.TEST_USER_PASSWORD;
 
 test.describe("Prompt Vault E2E", () => {
-  test("メール認証でログインしてPromptを作成し、置換とコピーを確認する", async ({ page }) => {
+  test("メール認証でログインしてプロンプトを作成し、置換とコピーを確認する", async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {
         value: { writeText: async (_text: string) => {} },

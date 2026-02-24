@@ -295,7 +295,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
 
           {isFormMode ? (
             <div className="mx-auto max-w-4xl space-y-4">
-              <h2 className="text-xl font-bold">{isCreating ? "新規Prompt作成" : "Prompt編集"}</h2>
+              <h2 className="text-xl font-bold">
+                {isCreating ? "新規プロンプト作成" : "プロンプト編集"}
+              </h2>
 
               {formError ? (
                 <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">

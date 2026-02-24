@@ -62,7 +62,7 @@ jobs:
             ${{ runner.os }}-playwright-
       - name: Install Playwright browsers
         if: ${{ steps.precheck.outputs.ready == 'true' }}
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install chromium
       - name: Generate Prisma client
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm prisma:generate

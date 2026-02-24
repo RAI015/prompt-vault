@@ -39,6 +39,13 @@ CI（GitHub Actions）:
 - `quality`: push / pull_request で `pnpm prisma:generate` / `pnpm biome:check` / `pnpm build` を実行（build用のダミー環境変数を設定、`.github/workflows/quality.yml`）
 - `gitleaks`: push / pull_request で常時実行（`.github/workflows/gitleaks.yml`）
 - `e2e`: push / pull_request / manual 実行。必要Secretsが揃っている場合のみ実行（`.github/workflows/e2e.yml`）
+- `cleanup-ci-db`: manual / 毎週月曜 03:00 UTC（日本時間: 毎週月曜 12:00）に実行。CI用DBのテストデータを削除（`.github/workflows/cleanup-ci-db.yml`）
+
+`cleanup-ci-db` に必要な Secrets:
+
+- `CI_CLEANUP_DATABASE_URL`（CI用Supabase DBの接続URL）
+- `CI_DATABASE_PROJECT_REF`（CI用Supabaseのproject ref）
+- `CI_CLEANUP_ALLOW_EMAILS`（削除対象メール一覧。カンマ区切り）
 
 ## セキュリティと制約
 

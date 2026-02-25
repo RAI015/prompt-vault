@@ -2,7 +2,7 @@
 
 import type { Prompt } from "@prisma/client";
 import { Braces, Copy, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -49,6 +49,22 @@ const isLongTextPlaceholder = (key: string): boolean => {
   return /(log|body|text|content|detail|error|stack|message|context|note)/i.test(key);
 };
 
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  if (target.isContentEditable || target.closest("[contenteditable='true']")) {
+    return true;
+  }
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+};
+
+type ToastState = {
+  message: string;
+  variant: "success" | "error";
+};
+
 export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[] }) => {
   const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts);
   const [search, setSearch] = useState("");
@@ -65,8 +81,10 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     {},
   );
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
-  const [copyStatus, setCopyStatus] = useState("");
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [isPending, startTransition] = useTransition();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,
@@ -100,7 +118,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     setSelectedPromptId(null);
     setFormState(toPromptInputState());
     setPlaceholderValues({});
-    setCopyStatus("");
+    setToast(null);
     resetFormErrors();
   };
 
@@ -110,7 +128,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     setIsEditing(false);
     setFormState(toPromptInputState(prompt));
     setPlaceholderValues({});
-    setCopyStatus("");
+    setToast(null);
     resetFormErrors();
   };
 
@@ -226,14 +244,65 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     resetFormErrors();
   };
 
-  const onCopy = async () => {
+  const showToast = useCallback((message: string, variant: ToastState["variant"]) => {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    setToast({ message, variant });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 2500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const onCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(renderedBody);
-      setCopyStatus("コピーしました");
+      showToast("コピーしました", "success");
     } catch {
-      setCopyStatus("コピーに失敗しました");
+      showToast("コピーに失敗しました", "error");
     }
-  };
+  }, [renderedBody, showToast]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) {
+        return;
+      }
+      if (
+        event.key === "/" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      if (event.code === "KeyC" && event.altKey && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        void onCopy();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onCopy]);
 
   const isFormMode = isCreating || isEditing;
 
@@ -264,10 +333,29 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="prompt-search"
+                  ref={searchInputRef}
                   className="pl-8"
                   placeholder="タイトル / タグで絞り込み"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      if (filteredPrompts.length === 0) {
+                        return;
+                      }
+                      const selectedInResults = filteredPrompts.find(
+                        (prompt) => prompt.id === selectedPromptId,
+                      );
+                      selectPrompt(selectedInResults ?? filteredPrompts[0]);
+                      searchInputRef.current?.blur();
+                      return;
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      searchInputRef.current?.blur();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -457,12 +545,14 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                   <Button variant="outline" size="sm" onClick={onCopy}>
                     <Copy className="mr-2 h-4 w-4" />
                     コピー
+                    <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
+                      ⌥C
+                    </kbd>
                   </Button>
                 </div>
                 <ScrollArea className="max-h-64 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
                   {renderedBody}
                 </ScrollArea>
-                {copyStatus ? <p className="text-sm text-muted-foreground">{copyStatus}</p> : null}
               </div>
 
               <Separator />
@@ -507,6 +597,17 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
           ) : null}
         </main>
       </div>
+      {toast ? (
+        <div
+          className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-md ${
+            toast.variant === "success"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300"
+          }`}
+        >
+          {toast.message}
+        </div>
+      ) : null}
     </div>
   );
 };

@@ -43,7 +43,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByText("求人: フロントエンド開発")).toBeVisible();
     await expect(page.getByText("ログ: エラーログA")).toBeVisible();
 
-    await page.getByRole("button", { name: "コピー" }).click();
-    await expect(page.getByText("コピーしました", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /本文コピー/ }).click();
+    await expect(page.getByText("本文をコピーしました", { exact: true })).toBeVisible();
   });
 });

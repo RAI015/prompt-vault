@@ -263,12 +263,22 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     };
   }, []);
 
-  const onCopy = useCallback(async () => {
+  const copyPlainText = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(renderedBody);
-      showToast("コピーしました", "success");
+      showToast("本文をコピーしました", "success");
     } catch {
-      showToast("コピーに失敗しました", "error");
+      showToast("本文コピーに失敗しました", "error");
+    }
+  }, [renderedBody, showToast]);
+
+  const copyMarkdownText = useCallback(async () => {
+    const markdownText = `\`\`\`\n${renderedBody}\n\`\`\``;
+    try {
+      await navigator.clipboard.writeText(markdownText);
+      showToast("Markdown整形コピーしました", "success");
+    } catch {
+      showToast("Markdown整形コピーに失敗しました", "error");
     }
   }, [renderedBody, showToast]);
 
@@ -294,7 +304,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       }
       if (event.code === "KeyC" && event.altKey && !event.metaKey && !event.ctrlKey) {
         event.preventDefault();
-        void onCopy();
+        void copyPlainText();
       }
     };
 
@@ -302,7 +312,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [onCopy]);
+  }, [copyPlainText]);
 
   const isFormMode = isCreating || isEditing;
 
@@ -542,13 +552,29 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
               <div className="space-y-2 rounded-md border p-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">レンダリング結果</h3>
-                  <Button variant="outline" size="sm" onClick={onCopy}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    コピー
-                    <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                      ⌥C
-                    </kbd>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyPlainText}
+                      title="プロンプト本文のみをコピーします"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      本文コピー
+                      <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
+                        ⌥C
+                      </kbd>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyMarkdownText}
+                      title="ログ/コードを ``` で囲ってコピーします"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Markdown整形コピー
+                    </Button>
+                  </div>
                 </div>
                 <ScrollArea className="max-h-64 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
                   {renderedBody}

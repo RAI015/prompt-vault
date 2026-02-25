@@ -23,27 +23,25 @@ test.describe("Prompt Vault E2E", () => {
 
     await expect(page.getByText("Prompt Vault")).toBeVisible();
 
-    await page.getByRole("button", { name: "新規作成" }).click();
-    await page.getByLabel("タイトル").fill(title);
-    await page.getByLabel("本文").fill(body);
-    await page.getByLabel("タグ（カンマ区切り）").fill("e2e, test");
-    await page.getByRole("button", { name: "保存" }).click();
+    await page.getByTestId("pv-create-button").click();
+    await page.getByTestId("pv-title-input").fill(title);
+    await page.getByTestId("pv-body-input").fill(body);
+    await page.getByTestId("pv-tags-input").fill("e2e, test");
+    await page.getByTestId("pv-save-button").click();
 
+    await expect(page.getByTestId("pv-selected-title")).toHaveText(title);
+    await expect(page.getByTestId("pv-placeholder-input-JOB_DESC")).toBeVisible();
     await expect(
-      page.getByRole("main").getByRole("heading", { level: 2, name: title }),
-    ).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "{{JOB_DESC}}" })).toBeVisible();
-    await expect(
-      page.getByRole("complementary").getByRole("button", { name: new RegExp(title) }),
+      page.getByTestId("pv-search-result-item").filter({ hasText: title }),
     ).toBeVisible();
 
-    await page.getByLabel("{{JOB_DESC}}").fill("フロントエンド開発");
-    await page.getByLabel("{{LOGS}}").fill("エラーログA");
+    await page.getByTestId("pv-placeholder-input-JOB_DESC").fill("フロントエンド開発");
+    await page.getByTestId("pv-placeholder-input-LOGS").fill("エラーログA");
 
-    await expect(page.getByText("求人: フロントエンド開発")).toBeVisible();
-    await expect(page.getByText("ログ: エラーログA")).toBeVisible();
+    await expect(page.getByTestId("pv-rendered-output")).toContainText("求人: フロントエンド開発");
+    await expect(page.getByTestId("pv-rendered-output")).toContainText("ログ: エラーログA");
 
-    await page.getByRole("button", { name: /本文コピー/ }).click();
-    await expect(page.getByText("本文をコピーしました", { exact: true })).toBeVisible();
+    await page.getByTestId("pv-copy-body").click();
+    await expect(page.getByTestId("pv-toast-success")).toContainText("本文をコピーしました");
   });
 });

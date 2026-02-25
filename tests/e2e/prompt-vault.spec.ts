@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { PV_SELECTORS, getPlaceholderInputSelector } from "../../src/constants/ui-selectors";
 
 const testUserEmail = process.env.TEST_USER_EMAIL;
 const testUserPassword = process.env.TEST_USER_PASSWORD;
@@ -23,25 +24,27 @@ test.describe("Prompt Vault E2E", () => {
 
     await expect(page.getByText("Prompt Vault")).toBeVisible();
 
-    await page.getByTestId("pv-create-button").click();
-    await page.getByTestId("pv-title-input").fill(title);
-    await page.getByTestId("pv-body-input").fill(body);
-    await page.getByTestId("pv-tags-input").fill("e2e, test");
-    await page.getByTestId("pv-save-button").click();
+    await page.getByTestId(PV_SELECTORS.createButton).click();
+    await page.getByTestId(PV_SELECTORS.titleInput).fill(title);
+    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
+    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, test");
+    await page.getByTestId(PV_SELECTORS.saveButton).click();
 
-    await expect(page.getByTestId("pv-selected-title")).toHaveText(title);
-    await expect(page.getByTestId("pv-placeholder-input-JOB_DESC")).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
+    await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toBeVisible();
     await expect(
-      page.getByTestId("pv-search-result-item").filter({ hasText: title }),
+      page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: title }),
     ).toBeVisible();
 
-    await page.getByTestId("pv-placeholder-input-JOB_DESC").fill("フロントエンド開発");
-    await page.getByTestId("pv-placeholder-input-LOGS").fill("エラーログA");
+    await page.getByTestId(getPlaceholderInputSelector("JOB_DESC")).fill("フロントエンド開発");
+    await page.getByTestId(getPlaceholderInputSelector("LOGS")).fill("エラーログA");
 
-    await expect(page.getByTestId("pv-rendered-output")).toContainText("求人: フロントエンド開発");
-    await expect(page.getByTestId("pv-rendered-output")).toContainText("ログ: エラーログA");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(
+      "求人: フロントエンド開発",
+    );
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("ログ: エラーログA");
 
-    await page.getByTestId("pv-copy-body").click();
-    await expect(page.getByTestId("pv-toast-success")).toContainText("本文をコピーしました");
+    await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
+    await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
   });
 });

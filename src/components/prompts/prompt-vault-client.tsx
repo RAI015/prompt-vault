@@ -24,6 +24,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  PV_SELECTORS,
+  getPlaceholderInputSelector,
+  getToastSelector,
+} from "@/constants/ui-selectors";
 import { createClient } from "@/lib/supabase/client";
 import { parseTagCsv, promptSchema } from "@/schemas/prompt";
 import {
@@ -331,7 +336,11 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       <div className="flex h-[calc(100vh-56px)]">
         <aside className="w-[280px] border-r">
           <div className="space-y-3 p-3">
-            <Button className="w-full" onClick={switchToCreateMode} data-testid="pv-create-button">
+            <Button
+              className="w-full"
+              onClick={switchToCreateMode}
+              data-pv={PV_SELECTORS.createButton}
+            >
               <Plus className="mr-2 h-4 w-4" />
               新規作成
             </Button>
@@ -343,7 +352,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="prompt-search"
-                  data-testid="pv-search-input"
+                  data-pv={PV_SELECTORS.searchInput}
                   ref={searchInputRef}
                   className="pl-8"
                   placeholder="タイトル / タグで絞り込み"
@@ -378,7 +387,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 <button
                   key={prompt.id}
                   type="button"
-                  data-testid="pv-search-result-item"
+                  data-pv={PV_SELECTORS.searchResultItem}
                   onClick={() => selectPrompt(prompt)}
                   className={`w-full rounded-md p-2 text-left ${
                     selectedPromptId === prompt.id && !isFormMode ? "bg-accent" : "hover:bg-muted"
@@ -421,7 +430,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 </label>
                 <Input
                   id="title"
-                  data-testid="pv-title-input"
+                  data-pv={PV_SELECTORS.titleInput}
                   value={formState.title}
                   onChange={(event) =>
                     setFormState((prev) => ({ ...prev, title: event.target.value }))
@@ -436,7 +445,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 </label>
                 <Textarea
                   id="body"
-                  data-testid="pv-body-input"
+                  data-pv={PV_SELECTORS.bodyInput}
                   rows={14}
                   value={formState.body}
                   onChange={(event) =>
@@ -452,7 +461,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                 </label>
                 <Input
                   id="tags"
-                  data-testid="pv-tags-input"
+                  data-pv={PV_SELECTORS.tagsInput}
                   placeholder="例: design, prompt, gpt"
                   value={formState.tagsCsv}
                   onChange={(event) =>
@@ -467,7 +476,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                   onClick={savePrompt}
                   disabled={isPending}
                   className="gap-2"
-                  data-testid="pv-save-button"
+                  data-pv={PV_SELECTORS.saveButton}
                 >
                   {isPending ? <Spinner /> : <Save className="h-4 w-4" />}
                   <span>保存</span>
@@ -500,7 +509,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
               ) : null}
 
               <div>
-                <h2 className="text-2xl font-bold" data-testid="pv-selected-title">
+                <h2 className="text-2xl font-bold" data-pv={PV_SELECTORS.selectedTitle}>
                   {selectedPrompt.title}
                 </h2>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -532,7 +541,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                       {isLongTextPlaceholder(key) ? (
                         <Textarea
                           id={`placeholder-${key}`}
-                          data-testid={`pv-placeholder-input-${key}`}
+                          data-pv={getPlaceholderInputSelector(key)}
                           rows={6}
                           className="resize-y font-mono"
                           placeholder="複数行の入力に対応"
@@ -547,7 +556,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                       ) : (
                         <Input
                           id={`placeholder-${key}`}
-                          data-testid={`pv-placeholder-input-${key}`}
+                          data-pv={getPlaceholderInputSelector(key)}
                           placeholder="値を入力"
                           value={placeholderValues[key] ?? ""}
                           onChange={(event) =>
@@ -572,7 +581,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                       size="sm"
                       onClick={copyPlainText}
                       title="プロンプト本文のみをコピーします"
-                      data-testid="pv-copy-body"
+                      data-pv={PV_SELECTORS.copyBodyButton}
                     >
                       <Copy className="mr-2 h-4 w-4" />
                       本文コピー
@@ -585,7 +594,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                       size="sm"
                       onClick={copyMarkdownText}
                       title="ログ/コードを ``` で囲ってコピーします"
-                      data-testid="pv-copy-markdown"
+                      data-pv={PV_SELECTORS.copyMarkdownButton}
                     >
                       <Copy className="mr-2 h-4 w-4" />
                       Markdown整形コピー
@@ -593,7 +602,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                   </div>
                 </div>
                 <ScrollArea
-                  data-testid="pv-rendered-output"
+                  data-pv={PV_SELECTORS.renderedOutput}
                   className="max-h-64 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
                 >
                   {renderedBody}
@@ -644,7 +653,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       </div>
       {toast ? (
         <div
-          data-testid={`pv-toast-${toast.variant}`}
+          data-pv={getToastSelector(toast.variant)}
           className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-md ${
             toast.variant === "success"
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"

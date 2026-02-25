@@ -296,7 +296,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
           </ScrollArea>
         </aside>
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 overflow-y-auto p-6">
           {!isFormMode && !selectedPrompt ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               プロンプトを選択してください

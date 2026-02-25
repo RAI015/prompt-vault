@@ -447,9 +447,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Promptを削除しますか？</AlertDialogTitle>
+                      <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
                       <AlertDialogDescription>
-                        削除したPromptは復元できません。
+                        削除したプロンプトは復元できません。
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

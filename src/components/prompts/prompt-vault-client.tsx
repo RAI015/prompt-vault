@@ -206,7 +206,6 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   };
 
   const savePrompt = () => {
-    console.log("save");
     resetFormErrors();
     const payload = validateForm();
     if (!payload) {

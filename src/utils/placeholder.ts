@@ -1,4 +1,4 @@
-const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*)\}\}/g;
+const PLACEHOLDER_REGEX = /\{\{([A-Za-z][A-Za-z0-9_]*)\}\}/g;
 
 export const extractPlaceholders = (body: string): string[] => {
   const values = new Set<string>();

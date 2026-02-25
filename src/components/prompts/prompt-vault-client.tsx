@@ -27,6 +27,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   PV_SELECTORS,
   getPlaceholderInputSelector,
+  getPlaceholderLogActionSelector,
+  getPlaceholderLogLineCountSelector,
   getToastSelector,
 } from "@/constants/ui-selectors";
 import { createClient } from "@/lib/supabase/client";
@@ -52,6 +54,40 @@ const toPromptInputState = (prompt?: Prompt): PromptInputState => ({
 
 const isLongTextPlaceholder = (key: string): boolean => {
   return /(log|body|text|content|detail|error|stack|message|context|note)/i.test(key);
+};
+
+const isErrorLogsPlaceholder = (key: string): boolean => {
+  const normalizedKey = key.toLowerCase();
+  return normalizedKey === "error_logs" || normalizedKey === "error_log";
+};
+
+const LOG_TRIM_LINE_COUNT = 50;
+
+const splitLines = (value: string): string[] => {
+  if (!value) {
+    return [];
+  }
+  return value.split(/\r?\n/);
+};
+
+const toHeadLines = (value: string, lineCount: number): string => {
+  return splitLines(value).slice(0, lineCount).join("\n");
+};
+
+const toTailLines = (value: string, lineCount: number): string => {
+  const lines = splitLines(value);
+  return lines.slice(Math.max(0, lines.length - lineCount)).join("\n");
+};
+
+const toHeadTailLines = (value: string, lineCount: number): string => {
+  const lines = splitLines(value);
+  if (lines.length <= lineCount * 2) {
+    return value;
+  }
+  const omitted = lines.length - lineCount * 2;
+  const head = lines.slice(0, lineCount);
+  const tail = lines.slice(lines.length - lineCount);
+  return [...head, `... (${omitted} lines omitted) ...`, ...tail].join("\n");
 };
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -86,6 +122,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     {},
   );
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
+  const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -123,6 +160,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     setSelectedPromptId(null);
     setFormState(toPromptInputState());
     setPlaceholderValues({});
+    setPlaceholderUndoValues({});
     setToast(null);
     resetFormErrors();
   };
@@ -133,6 +171,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     setIsEditing(false);
     setFormState(toPromptInputState(prompt));
     setPlaceholderValues({});
+    setPlaceholderUndoValues({});
     setToast(null);
     resetFormErrors();
   };
@@ -286,6 +325,40 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       showToast("Markdown整形コピーに失敗しました", "error");
     }
   }, [renderedBody, showToast]);
+
+  const applyErrorLogsTransform = useCallback(
+    (key: string, transform: (value: string) => string) => {
+      const current = placeholderValues[key] ?? "";
+      const next = transform(current);
+      if (next === current) {
+        return;
+      }
+      setPlaceholderValues((prev) => ({ ...prev, [key]: next }));
+      setPlaceholderUndoValues((prev) => {
+        if (prev[key] !== undefined) {
+          return prev;
+        }
+        return { ...prev, [key]: current };
+      });
+    },
+    [placeholderValues],
+  );
+
+  const restoreErrorLogsValue = useCallback(
+    (key: string) => {
+      const undoValue = placeholderUndoValues[key];
+      if (undoValue === undefined) {
+        return;
+      }
+      setPlaceholderValues((prev) => ({ ...prev, [key]: undoValue }));
+      setPlaceholderUndoValues((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    },
+    [placeholderUndoValues],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -539,20 +612,83 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                         {`{{${key}}}`}
                       </label>
                       {isLongTextPlaceholder(key) ? (
-                        <Textarea
-                          id={`placeholder-${key}`}
-                          data-pv={getPlaceholderInputSelector(key)}
-                          rows={6}
-                          className="resize-y font-mono"
-                          placeholder="複数行の入力に対応"
-                          value={placeholderValues[key] ?? ""}
-                          onChange={(event) =>
-                            setPlaceholderValues((prev) => ({
-                              ...prev,
-                              [key]: event.target.value,
-                            }))
-                          }
-                        />
+                        <div className="space-y-2">
+                          <Textarea
+                            id={`placeholder-${key}`}
+                            data-pv={getPlaceholderInputSelector(key)}
+                            rows={6}
+                            className="resize-y font-mono"
+                            placeholder="複数行の入力に対応"
+                            value={placeholderValues[key] ?? ""}
+                            onChange={(event) =>
+                              setPlaceholderValues((prev) => ({
+                                ...prev,
+                                [key]: event.target.value,
+                              }))
+                            }
+                          />
+                          {isErrorLogsPlaceholder(key) ? (
+                            <div className="space-y-2">
+                              <p
+                                className="text-xs text-muted-foreground"
+                                data-pv={getPlaceholderLogLineCountSelector(key)}
+                              >
+                                行数: {splitLines(placeholderValues[key] ?? "").length}
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  data-pv={getPlaceholderLogActionSelector(key, "head")}
+                                  onClick={() =>
+                                    applyErrorLogsTransform(key, (value) =>
+                                      toHeadLines(value, LOG_TRIM_LINE_COUNT),
+                                    )
+                                  }
+                                >
+                                  Head {LOG_TRIM_LINE_COUNT}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  data-pv={getPlaceholderLogActionSelector(key, "tail")}
+                                  onClick={() =>
+                                    applyErrorLogsTransform(key, (value) =>
+                                      toTailLines(value, LOG_TRIM_LINE_COUNT),
+                                    )
+                                  }
+                                >
+                                  Tail {LOG_TRIM_LINE_COUNT}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  data-pv={getPlaceholderLogActionSelector(key, "head-tail")}
+                                  onClick={() =>
+                                    applyErrorLogsTransform(key, (value) =>
+                                      toHeadTailLines(value, LOG_TRIM_LINE_COUNT),
+                                    )
+                                  }
+                                >
+                                  Head+Tail
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  data-pv={getPlaceholderLogActionSelector(key, "undo")}
+                                  onClick={() => restoreErrorLogsValue(key)}
+                                  disabled={placeholderUndoValues[key] === undefined}
+                                >
+                                  Undo
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       ) : (
                         <Input
                           id={`placeholder-${key}`}

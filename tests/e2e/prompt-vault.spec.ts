@@ -49,6 +49,14 @@ test.describe("Prompt Vault E2E", () => {
     );
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("ログ: エラーログA");
 
+    await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
+    await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
+    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText(
+      "フロントエンド開発",
+    );
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("エラーログA");
+
     await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
     await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
   });

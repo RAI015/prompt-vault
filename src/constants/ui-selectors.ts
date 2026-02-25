@@ -9,6 +9,7 @@ export const PV_SELECTORS = {
   tagsInput: "pv-tags-input",
   saveButton: "pv-save-button",
   selectedTitle: "pv-selected-title",
+  clearPlaceholdersButton: "pv-clear-placeholders",
   copyBodyButton: "pv-copy-body",
   copyMarkdownButton: "pv-copy-markdown",
   renderedOutput: "pv-rendered-output",

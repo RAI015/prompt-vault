@@ -1,7 +1,7 @@
 "use client";
 
 import type { Prompt } from "@prisma/client";
-import { Braces, Copy, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
+import { Braces, Copy, Eraser, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -326,6 +326,11 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     }
   }, [renderedBody, showToast]);
 
+  const clearPlaceholderValues = useCallback(() => {
+    setPlaceholderValues({});
+    setPlaceholderUndoValues({});
+  }, []);
+
   const applyErrorLogsTransform = useCallback(
     (key: string, transform: (value: string) => string) => {
       const current = placeholderValues[key] ?? "";
@@ -393,6 +398,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   }, [copyPlainText]);
 
   const isFormMode = isCreating || isEditing;
+  const canClearPlaceholders = placeholders.some(
+    (key) => (placeholderValues[key] ?? "").length > 0,
+  );
 
   return (
     <div className="h-screen overflow-hidden">
@@ -598,10 +606,23 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
 
               {placeholders.length > 0 ? (
                 <div className="space-y-3 rounded-md border bg-muted/20 p-4">
-                  <div className="flex items-center gap-2">
-                    <Braces className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="font-medium">プレースホルダ入力</h3>
-                    <Badge variant="secondary">{placeholders.length}</Badge>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Braces className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-medium">プレースホルダ入力</h3>
+                      <Badge variant="secondary">{placeholders.length}</Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearPlaceholderValues}
+                      disabled={!canClearPlaceholders}
+                      title="入力をすべて空にします"
+                      data-pv={PV_SELECTORS.clearPlaceholdersButton}
+                    >
+                      <Eraser className="mr-2 h-4 w-4" />
+                      全消去
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     「{"{{...}}"}」ごとの値を入力すると、下の「レンダリング結果」に反映されます。
@@ -641,49 +662,53 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
                                   variant="outline"
                                   size="sm"
                                   data-pv={getPlaceholderLogActionSelector(key, "head")}
+                                  title={`先頭から${LOG_TRIM_LINE_COUNT}行だけ残します`}
                                   onClick={() =>
                                     applyErrorLogsTransform(key, (value) =>
                                       toHeadLines(value, LOG_TRIM_LINE_COUNT),
                                     )
                                   }
                                 >
-                                  Head {LOG_TRIM_LINE_COUNT}
+                                  先頭{LOG_TRIM_LINE_COUNT}行
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   data-pv={getPlaceholderLogActionSelector(key, "tail")}
+                                  title={`末尾から${LOG_TRIM_LINE_COUNT}行だけ残します`}
                                   onClick={() =>
                                     applyErrorLogsTransform(key, (value) =>
                                       toTailLines(value, LOG_TRIM_LINE_COUNT),
                                     )
                                   }
                                 >
-                                  Tail {LOG_TRIM_LINE_COUNT}
+                                  末尾{LOG_TRIM_LINE_COUNT}行
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   data-pv={getPlaceholderLogActionSelector(key, "head-tail")}
+                                  title={`先頭${LOG_TRIM_LINE_COUNT}行と末尾${LOG_TRIM_LINE_COUNT}行だけ残します`}
                                   onClick={() =>
                                     applyErrorLogsTransform(key, (value) =>
                                       toHeadTailLines(value, LOG_TRIM_LINE_COUNT),
                                     )
                                   }
                                 >
-                                  Head+Tail
+                                  先頭+末尾
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   data-pv={getPlaceholderLogActionSelector(key, "undo")}
+                                  title="直前の短縮を取り消します"
                                   onClick={() => restoreErrorLogsValue(key)}
                                   disabled={placeholderUndoValues[key] === undefined}
                                 >
-                                  Undo
+                                  元に戻す
                                 </Button>
                               </div>
                             </div>

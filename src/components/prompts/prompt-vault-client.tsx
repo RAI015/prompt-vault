@@ -1,7 +1,7 @@
 "use client";
 
 import type { Prompt } from "@prisma/client";
-import { Copy, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
+import { Braces, Copy, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -44,6 +44,10 @@ const toPromptInputState = (prompt?: Prompt): PromptInputState => ({
   body: prompt?.body ?? "",
   tagsCsv: prompt?.tags.join(", ") ?? "",
 });
+
+const isLongTextPlaceholder = (key: string): boolean => {
+  return /(log|body|text|content|detail|error|stack|message|context|note)/i.test(key);
+};
 
 export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[] }) => {
   const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts);
@@ -252,14 +256,20 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
               <Plus className="mr-2 h-4 w-4" />
               新規作成
             </Button>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-8"
-                placeholder="タイトル/タグで検索"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+            <div className="space-y-1">
+              <label htmlFor="prompt-search" className="text-xs font-medium text-muted-foreground">
+                検索
+              </label>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="prompt-search"
+                  className="pl-8"
+                  placeholder="タイトル / タグで絞り込み"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -395,23 +405,47 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
               </ScrollArea>
 
               {placeholders.length > 0 ? (
-                <div className="space-y-2 rounded-md border p-4">
-                  <h3 className="font-medium">プレースホルダ入力</h3>
+                <div className="space-y-3 rounded-md border bg-muted/20 p-4">
+                  <div className="flex items-center gap-2">
+                    <Braces className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="font-medium">プレースホルダ入力</h3>
+                    <Badge variant="secondary">{placeholders.length}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    「{"{{...}}"}」ごとの値を入力すると、下の「レンダリング結果」に反映されます。
+                  </p>
                   {placeholders.map((key) => (
                     <div key={key} className="space-y-1">
                       <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
                         {`{{${key}}}`}
                       </label>
-                      <Input
-                        id={`placeholder-${key}`}
-                        value={placeholderValues[key] ?? ""}
-                        onChange={(event) =>
-                          setPlaceholderValues((prev) => ({
-                            ...prev,
-                            [key]: event.target.value,
-                          }))
-                        }
-                      />
+                      {isLongTextPlaceholder(key) ? (
+                        <Textarea
+                          id={`placeholder-${key}`}
+                          rows={6}
+                          className="resize-y font-mono"
+                          placeholder="複数行の入力に対応"
+                          value={placeholderValues[key] ?? ""}
+                          onChange={(event) =>
+                            setPlaceholderValues((prev) => ({
+                              ...prev,
+                              [key]: event.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <Input
+                          id={`placeholder-${key}`}
+                          placeholder="値を入力"
+                          value={placeholderValues[key] ?? ""}
+                          onChange={(event) =>
+                            setPlaceholderValues((prev) => ({
+                              ...prev,
+                              [key]: event.target.value,
+                            }))
+                          }
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

@@ -70,7 +70,7 @@ export const updateMyPrompt = async (
   try {
     const existingPrompt = await findPromptByIdAndOwner(promptId, appUserResult.data.id);
     if (!existingPrompt) {
-      return err("NOT_FOUND", "対象のPromptが見つかりません");
+      return err("NOT_FOUND", "対象のプロンプトが見つかりません");
     }
 
     const prompt = await updatePrompt(promptId, appUserResult.data.id, validated.data);
@@ -89,7 +89,7 @@ export const deleteMyPrompt = async (promptId: string): Promise<ActionResult<{ i
   try {
     const existingPrompt = await findPromptByIdAndOwner(promptId, appUserResult.data.id);
     if (!existingPrompt) {
-      return err("NOT_FOUND", "対象のPromptが見つかりません");
+      return err("NOT_FOUND", "対象のプロンプトが見つかりません");
     }
 
     await deletePrompt(promptId);

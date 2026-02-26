@@ -131,6 +131,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
   const [leftPaneWidth, setLeftPaneWidth] = useState<number>(DEFAULT_LEFT_PANE_WIDTH);
+  const leftPaneWidthRef = useRef<number>(DEFAULT_LEFT_PANE_WIDTH);
   const dragStateRef = useRef<{
     isDragging: boolean;
     startX: number;
@@ -149,23 +150,41 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     }
   }, []);
 
-  const onSplitterPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) return;
-      event.preventDefault();
-      event.currentTarget.setPointerCapture(event.pointerId);
+  useEffect(() => {
+    leftPaneWidthRef.current = leftPaneWidth;
+  }, [leftPaneWidth]);
 
-      dragStateRef.current = {
-        isDragging: true,
-        startX: event.clientX,
-        startWidth: leftPaneWidth,
-      };
+  const finishDragging = useCallback((finalWidth?: number) => {
+    if (!dragStateRef.current.isDragging) return;
+    dragStateRef.current.isDragging = false;
 
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    },
-    [leftPaneWidth],
-  );
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+
+    const widthToSave = clamp(
+      finalWidth ?? leftPaneWidthRef.current,
+      MIN_LEFT_PANE_WIDTH,
+      MAX_LEFT_PANE_WIDTH,
+    );
+    leftPaneWidthRef.current = widthToSave;
+    setLeftPaneWidth(widthToSave);
+    localStorage.setItem(LEFT_PANE_WIDTH_KEY, String(widthToSave));
+  }, []);
+
+  const onSplitterPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    dragStateRef.current = {
+      isDragging: true,
+      startX: event.clientX,
+      startWidth: leftPaneWidthRef.current,
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
@@ -176,26 +195,37 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
         MIN_LEFT_PANE_WIDTH,
         MAX_LEFT_PANE_WIDTH,
       );
+      leftPaneWidthRef.current = next;
       setLeftPaneWidth(next);
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (event: PointerEvent) => {
       if (!dragStateRef.current.isDragging) return;
-      dragStateRef.current.isDragging = false;
+      const delta = event.clientX - dragStateRef.current.startX;
+      const finalWidth = clamp(
+        dragStateRef.current.startWidth + delta,
+        MIN_LEFT_PANE_WIDTH,
+        MAX_LEFT_PANE_WIDTH,
+      );
+      finishDragging(finalWidth);
+    };
 
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-
-      localStorage.setItem(LEFT_PANE_WIDTH_KEY, String(leftPaneWidth));
+    const onPointerCancel = () => {
+      finishDragging();
     };
 
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
+      dragStateRef.current.isDragging = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
-  }, [leftPaneWidth]);
+  }, [finishDragging]);
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,

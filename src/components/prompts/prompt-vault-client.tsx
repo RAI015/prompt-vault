@@ -162,23 +162,27 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     leftPaneWidthRef.current = leftPaneWidth;
   }, [leftPaneWidth]);
 
-  const finishDragging = useCallback((finalWidth?: number) => {
-    if (!dragStateRef.current.isDragging) return;
-    dragStateRef.current.isDragging = false;
-    dragStateRef.current.pointerId = null;
+  const finishDragging = useCallback(
+    (finalWidth?: number) => {
+      if (!dragStateRef.current.isDragging) return;
+      dragStateRef.current.isDragging = false;
+      dragStateRef.current.pointerId = null;
 
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
 
-    const widthToSave = clamp(
-      finalWidth ?? leftPaneWidthRef.current,
-      MIN_LEFT_PANE_WIDTH,
-      MAX_LEFT_PANE_WIDTH,
-    );
-    leftPaneWidthRef.current = widthToSave;
-    setLeftPaneWidth(widthToSave);
-    localStorage.setItem(LEFT_PANE_WIDTH_KEY, String(widthToSave));
-  }, []);
+      const widthToSave = clamp(
+        finalWidth ?? leftPaneWidthRef.current,
+        MIN_LEFT_PANE_WIDTH,
+        MAX_LEFT_PANE_WIDTH,
+      );
+      leftPaneWidthRef.current = widthToSave;
+      setLeftPaneWidth(widthToSave);
+      localStorage.setItem(LEFT_PANE_WIDTH_KEY, String(widthToSave));
+    },
+    // File-scope constants are intentionally excluded from deps.
+    [],
+  );
 
   const onSplitterPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;

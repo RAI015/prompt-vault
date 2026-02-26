@@ -62,6 +62,12 @@ const isErrorLogsPlaceholder = (key: string): boolean => {
 };
 
 const LOG_TRIM_LINE_COUNT = 50;
+const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
+const DEFAULT_LEFT_PANE_WIDTH = 280;
+const MIN_LEFT_PANE_WIDTH = 120;
+const MAX_LEFT_PANE_WIDTH = 520;
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const splitLines = (value: string): string[] => {
   if (!value) {
@@ -124,9 +130,120 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [leftPaneWidth, setLeftPaneWidth] = useState<number>(DEFAULT_LEFT_PANE_WIDTH);
+  const leftPaneWidthRef = useRef<number>(DEFAULT_LEFT_PANE_WIDTH);
+  const dragStateRef = useRef<{
+    isDragging: boolean;
+    pointerId: number | null;
+    startX: number;
+    startWidth: number;
+  }>({
+    isDragging: false,
+    pointerId: null,
+    startX: 0,
+    startWidth: DEFAULT_LEFT_PANE_WIDTH,
+  });
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(LEFT_PANE_WIDTH_KEY);
+    if (!raw) return;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) {
+      const width = clamp(parsed, MIN_LEFT_PANE_WIDTH, MAX_LEFT_PANE_WIDTH);
+      leftPaneWidthRef.current = width;
+      setLeftPaneWidth(width);
+    }
+  }, []);
+
+  useEffect(() => {
+    leftPaneWidthRef.current = leftPaneWidth;
+  }, [leftPaneWidth]);
+
+  const finishDragging = useCallback(
+    (finalWidth?: number) => {
+      if (!dragStateRef.current.isDragging) return;
+      dragStateRef.current.isDragging = false;
+      dragStateRef.current.pointerId = null;
+
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+
+      const widthToSave = clamp(
+        finalWidth ?? leftPaneWidthRef.current,
+        MIN_LEFT_PANE_WIDTH,
+        MAX_LEFT_PANE_WIDTH,
+      );
+      leftPaneWidthRef.current = widthToSave;
+      setLeftPaneWidth(widthToSave);
+      localStorage.setItem(LEFT_PANE_WIDTH_KEY, String(widthToSave));
+    },
+    // File-scope constants are intentionally excluded from deps.
+    [],
+  );
+
+  const onSplitterPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    dragStateRef.current = {
+      isDragging: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: leftPaneWidthRef.current,
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragStateRef.current.isDragging) return;
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
+      const delta = event.clientX - dragStateRef.current.startX;
+      const next = clamp(
+        dragStateRef.current.startWidth + delta,
+        MIN_LEFT_PANE_WIDTH,
+        MAX_LEFT_PANE_WIDTH,
+      );
+      leftPaneWidthRef.current = next;
+      setLeftPaneWidth(next);
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (!dragStateRef.current.isDragging) return;
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
+      const delta = event.clientX - dragStateRef.current.startX;
+      const finalWidth = clamp(
+        dragStateRef.current.startWidth + delta,
+        MIN_LEFT_PANE_WIDTH,
+        MAX_LEFT_PANE_WIDTH,
+      );
+      finishDragging(finalWidth);
+    };
+
+    const onPointerCancel = (event: PointerEvent) => {
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
+      finishDragging();
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
+      dragStateRef.current.isDragging = false;
+      dragStateRef.current.pointerId = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [finishDragging]);
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,
@@ -414,8 +531,14 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-56px)]">
-        <aside className="w-[280px] border-r">
+      <div
+        className="h-[calc(100vh-56px)]"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `${leftPaneWidth}px 8px 1fr`,
+        }}
+      >
+        <aside className="border-r" data-pv={PV_SELECTORS.leftPane}>
           <div className="space-y-3 p-3">
             <Button
               className="w-full"
@@ -485,6 +608,13 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
             </div>
           </ScrollArea>
         </aside>
+
+        <div
+          data-pv={PV_SELECTORS.splitterHandle}
+          onPointerDown={onSplitterPointerDown}
+          className="h-full w-full cursor-col-resize bg-transparent hover:bg-muted/40"
+          style={{ touchAction: "none" }}
+        />
 
         <main className="flex-1 overflow-y-auto p-6">
           {!isFormMode && !selectedPrompt ? (

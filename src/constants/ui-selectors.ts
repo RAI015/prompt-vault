@@ -14,6 +14,8 @@ export const PV_SELECTORS = {
   copyMarkdownButton: "pv-copy-markdown",
   renderedOutput: "pv-rendered-output",
   toastSuccess: "pv-toast-success",
+  splitterHandle: "pv-splitter-handle",
+  leftPane: "pv-left-pane",
 } as const;
 
 export const getPlaceholderInputSelector = (key: string): string => {

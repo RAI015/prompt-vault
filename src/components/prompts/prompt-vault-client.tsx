@@ -134,9 +134,15 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   const leftPaneWidthRef = useRef<number>(DEFAULT_LEFT_PANE_WIDTH);
   const dragStateRef = useRef<{
     isDragging: boolean;
+    pointerId: number | null;
     startX: number;
     startWidth: number;
-  }>({ isDragging: false, startX: 0, startWidth: DEFAULT_LEFT_PANE_WIDTH });
+  }>({
+    isDragging: false,
+    pointerId: null,
+    startX: 0,
+    startWidth: DEFAULT_LEFT_PANE_WIDTH,
+  });
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -146,7 +152,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     if (!raw) return;
     const parsed = Number(raw);
     if (Number.isFinite(parsed)) {
-      setLeftPaneWidth(clamp(parsed, MIN_LEFT_PANE_WIDTH, MAX_LEFT_PANE_WIDTH));
+      const width = clamp(parsed, MIN_LEFT_PANE_WIDTH, MAX_LEFT_PANE_WIDTH);
+      leftPaneWidthRef.current = width;
+      setLeftPaneWidth(width);
     }
   }, []);
 
@@ -157,6 +165,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   const finishDragging = useCallback((finalWidth?: number) => {
     if (!dragStateRef.current.isDragging) return;
     dragStateRef.current.isDragging = false;
+    dragStateRef.current.pointerId = null;
 
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
@@ -178,6 +187,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
 
     dragStateRef.current = {
       isDragging: true,
+      pointerId: event.pointerId,
       startX: event.clientX,
       startWidth: leftPaneWidthRef.current,
     };
@@ -189,6 +199,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       if (!dragStateRef.current.isDragging) return;
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
       const delta = event.clientX - dragStateRef.current.startX;
       const next = clamp(
         dragStateRef.current.startWidth + delta,
@@ -201,6 +212,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
 
     const onPointerUp = (event: PointerEvent) => {
       if (!dragStateRef.current.isDragging) return;
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
       const delta = event.clientX - dragStateRef.current.startX;
       const finalWidth = clamp(
         dragStateRef.current.startWidth + delta,
@@ -210,7 +222,8 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       finishDragging(finalWidth);
     };
 
-    const onPointerCancel = () => {
+    const onPointerCancel = (event: PointerEvent) => {
+      if (dragStateRef.current.pointerId !== event.pointerId) return;
       finishDragging();
     };
 
@@ -222,6 +235,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
       dragStateRef.current.isDragging = false;
+      dragStateRef.current.pointerId = null;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };

@@ -487,6 +487,9 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       if (event.defaultPrevented || event.isComposing) {
         return;
       }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
       if (
         event.key === "/" &&
         !event.metaKey &&
@@ -497,9 +500,6 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
         event.preventDefault();
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
-        return;
-      }
-      if (isEditableTarget(event.target)) {
         return;
       }
       if (event.code === "KeyC" && event.altKey && !event.metaKey && !event.ctrlKey) {

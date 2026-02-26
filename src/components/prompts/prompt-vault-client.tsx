@@ -62,6 +62,12 @@ const isErrorLogsPlaceholder = (key: string): boolean => {
 };
 
 const LOG_TRIM_LINE_COUNT = 50;
+const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
+const DEFAULT_LEFT_PANE_WIDTH = 280;
+const MIN_LEFT_PANE_WIDTH = 120;
+const MAX_LEFT_PANE_WIDTH = 520;
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const splitLines = (value: string): string[] => {
   if (!value) {
@@ -124,9 +130,72 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [leftPaneWidth, setLeftPaneWidth] = useState<number>(DEFAULT_LEFT_PANE_WIDTH);
+  const dragStateRef = useRef<{
+    isDragging: boolean;
+    startX: number;
+    startWidth: number;
+  }>({ isDragging: false, startX: 0, startWidth: DEFAULT_LEFT_PANE_WIDTH });
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(LEFT_PANE_WIDTH_KEY);
+    if (!raw) return;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) {
+      setLeftPaneWidth(clamp(parsed, MIN_LEFT_PANE_WIDTH, MAX_LEFT_PANE_WIDTH));
+    }
+  }, []);
+
+  const onSplitterPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+
+      dragStateRef.current = {
+        isDragging: true,
+        startX: event.clientX,
+        startWidth: leftPaneWidth,
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [leftPaneWidth],
+  );
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragStateRef.current.isDragging) return;
+      const delta = event.clientX - dragStateRef.current.startX;
+      const next = clamp(
+        dragStateRef.current.startWidth + delta,
+        MIN_LEFT_PANE_WIDTH,
+        MAX_LEFT_PANE_WIDTH,
+      );
+      setLeftPaneWidth(next);
+    };
+
+    const onPointerUp = () => {
+      if (!dragStateRef.current.isDragging) return;
+      dragStateRef.current.isDragging = false;
+
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+
+      localStorage.setItem(LEFT_PANE_WIDTH_KEY, String(leftPaneWidth));
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [leftPaneWidth]);
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,
@@ -414,8 +483,14 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-56px)]">
-        <aside className="w-[280px] border-r">
+      <div
+        className="h-[calc(100vh-56px)]"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `${leftPaneWidth}px 8px 1fr`,
+        }}
+      >
+        <aside className="border-r" data-pv={PV_SELECTORS.leftPane}>
           <div className="space-y-3 p-3">
             <Button
               className="w-full"
@@ -485,6 +560,13 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
             </div>
           </ScrollArea>
         </aside>
+
+        <div
+          data-pv={PV_SELECTORS.splitterHandle}
+          onPointerDown={onSplitterPointerDown}
+          className="h-full w-full cursor-col-resize bg-transparent hover:bg-muted/40"
+          style={{ touchAction: "none" }}
+        />
 
         <main className="flex-1 overflow-y-auto p-6">
           {!isFormMode && !selectedPrompt ? (

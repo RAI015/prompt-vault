@@ -104,4 +104,32 @@ test.describe("Prompt Vault E2E", () => {
     await expect(lineCount).toHaveText("行数: 120");
     await expect(undoButton).toBeDisabled();
   });
+
+  test("左ペインの幅をドラッグで変更できる", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
+    await page.getByLabel("パスワード").fill(testUserPassword ?? "");
+    await page.getByRole("button", { name: "メールでログイン" }).click();
+    await expect(page.getByText("Prompt Vault")).toBeVisible();
+
+    const leftPane = page.getByTestId(PV_SELECTORS.leftPane);
+    const handle = page.getByTestId(PV_SELECTORS.splitterHandle);
+
+    const before = await leftPane.boundingBox();
+    if (!before) throw new Error("leftPane boundingBox is null");
+
+    const handleBox = await handle.boundingBox();
+    if (!handleBox) throw new Error("splitterHandle boundingBox is null");
+
+    // ハンドル中央をつかんで右へドラッグ
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x + 120, handleBox.y + handleBox.height / 2);
+    await page.mouse.up();
+
+    const after = await leftPane.boundingBox();
+    if (!after) throw new Error("leftPane boundingBox is null");
+
+    expect(after.width).toBeGreaterThan(before.width);
+  });
 });

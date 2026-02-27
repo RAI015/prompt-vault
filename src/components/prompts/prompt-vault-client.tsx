@@ -1,9 +1,5 @@
 "use client";
 
-import type { Prompt } from "@prisma/client";
-import { Braces, Copy, Eraser, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +34,12 @@ import {
   updatePromptAction,
 } from "@/server/actions/prompt-actions";
 import { extractPlaceholders, renderTemplate } from "@/utils/placeholder";
+import type { Prompt } from "@prisma/client";
+import { Braces, Copy, Eraser, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+
+import { buttonVariants } from "@/components/ui/button";
 
 type PromptInputState = {
   title: string;
@@ -45,7 +47,7 @@ type PromptInputState = {
   tagsCsv: string;
 };
 
-const toPromptInputState = (prompt?: Prompt): PromptInputState => ({
+const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
   title: prompt?.title ?? "",
   body: prompt?.body ?? "",
   tagsCsv: prompt?.tags.join(", ") ?? "",
@@ -111,13 +113,25 @@ type ToastState = {
   variant: "success" | "error";
 };
 
-export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[] }) => {
-  const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts);
+type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body">;
+type PromptVaultMode = "app" | "demo";
+
+export const PromptVaultClient = ({
+  initialPrompts,
+  mode = "app",
+}: {
+  initialPrompts: PromptLike[];
+  mode?: PromptVaultMode;
+}) => {
+  const isDemo = mode === "demo";
+
+  const [prompts, setPrompts] = useState<PromptLike[]>(initialPrompts);
   const [search, setSearch] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(
     initialPrompts[0]?.id ?? null,
   );
-  const [isCreating, setIsCreating] = useState(initialPrompts.length === 0);
+
+  const [isCreating, setIsCreating] = useState(isDemo ? false : initialPrompts.length === 0);
   const [isEditing, setIsEditing] = useState(false);
   const [formState, setFormState] = useState<PromptInputState>(() =>
     toPromptInputState(initialPrompts[0]),
@@ -271,6 +285,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   };
 
   const switchToCreateMode = () => {
+    if (isDemo) return;
     setIsCreating(true);
     setIsEditing(false);
     setSelectedPromptId(null);
@@ -281,7 +296,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     resetFormErrors();
   };
 
-  const selectPrompt = (prompt: Prompt) => {
+  const selectPrompt = (prompt: PromptLike) => {
     setSelectedPromptId(prompt.id);
     setIsCreating(false);
     setIsEditing(false);
@@ -322,6 +337,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   };
 
   const savePrompt = () => {
+    if (isDemo) return;
     resetFormErrors();
     const payload = validateForm();
     if (!payload) {
@@ -361,6 +377,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   };
 
   const removePrompt = (promptId: string) => {
+    if (isDemo) return;
     setFormError("");
 
     startTransition(async () => {
@@ -394,6 +411,7 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
   };
 
   const startEdit = () => {
+    if (isDemo) return;
     if (!selectedPrompt) {
       return;
     }
@@ -522,10 +540,21 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
     <div className="h-screen overflow-hidden">
       <header className="flex h-14 items-center justify-between border-b px-4">
         <div className="font-semibold">Prompt Vault</div>
+        {isDemo && (
+          <span className="rounded-md border px-2 py-0.5 text-muted-foreground">
+            DEMO（閲覧のみ）
+          </span>
+        )}
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={logout} disabled={isPending}>
-            ログアウト
-          </Button>
+          {isDemo ? (
+            <Link href="/login" className={buttonVariants({ variant: "outline" })}>
+              ログインして使う
+            </Link>
+          ) : (
+            <Button variant="outline" onClick={logout} disabled={isPending}>
+              ログアウト
+            </Button>
+          )}
         </div>
       </header>
 
@@ -538,14 +567,16 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       >
         <aside className="border-r" data-pv={PV_SELECTORS.leftPane}>
           <div className="space-y-3 p-3">
-            <Button
-              className="w-full"
-              onClick={switchToCreateMode}
-              data-pv={PV_SELECTORS.createButton}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              新規作成
-            </Button>
+            {!isDemo && (
+              <Button
+                className="w-full"
+                onClick={switchToCreateMode}
+                data-pv={PV_SELECTORS.createButton}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                新規作成
+              </Button>
+            )}
             <div className="space-y-1">
               <label htmlFor="prompt-search" className="text-xs font-medium text-muted-foreground">
                 検索
@@ -900,42 +931,44 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
 
               <Separator />
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={startEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  編集
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      削除
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        削除したプロンプトは復元できません。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel asChild>
-                        <Button variant="outline">キャンセル</Button>
-                      </AlertDialogCancel>
-                      <AlertDialogAction asChild>
-                        <Button
-                          variant="destructive"
-                          onClick={() => removePrompt(selectedPrompt.id)}
-                          disabled={isPending}
-                        >
-                          削除する
-                        </Button>
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+              {!isDemo && (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={startEdit}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    編集
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        削除
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          削除したプロンプトは復元できません。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                          <Button variant="outline">キャンセル</Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <Button
+                            variant="destructive"
+                            onClick={() => removePrompt(selectedPrompt.id)}
+                            disabled={isPending}
+                          >
+                            削除する
+                          </Button>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
             </div>
           ) : null}
         </main>

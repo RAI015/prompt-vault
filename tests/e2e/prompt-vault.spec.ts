@@ -132,4 +132,27 @@ test.describe("Prompt Vault E2E", () => {
 
     expect(after.width).toBeGreaterThan(before.width);
   });
+
+  test("DEMO: 閲覧できて、置換が反映され、禁止操作が表示されない", async ({ page }) => {
+    await page.goto("/demo");
+
+    await expect(page.getByText("DEMO（閲覧のみ）")).toBeVisible();
+    await expect(page.getByRole("link", { name: "ログインして使う" })).toBeVisible();
+
+    await expect(page.getByTestId(PV_SELECTORS.leftPane)).toBeVisible();
+
+    const key = "goal_text";
+    const input = page.getByTestId(getPlaceholderInputSelector(key));
+    await expect(input).toBeVisible();
+
+    await input.fill("E2Eデモ入力");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
+
+    // 禁止操作がUIに出ていない（消した前提）
+    await expect(page.getByTestId(PV_SELECTORS.createButton)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "ログアウト" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "編集" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "削除" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
+  });
 });

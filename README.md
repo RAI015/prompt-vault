@@ -1,7 +1,7 @@
 # Prompt Vault MVP
 
-Next.js (App Router) + Supabase Auth + Prisma で作る、個人用の Prompt Vault です。
-> 注: 未ログインでも「デモを見る（閲覧のみ）」で閲覧用デモを確認できます（編集・保存は不可）。
+個人用の Prompt Vault
+> 注: 未ログインでも「デモを見る（閲覧のみ）」で閲覧用デモを確認可能（編集・保存は不可）。
 
 [![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
 [![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)
@@ -64,8 +64,8 @@ CI（GitHub Actions）:
 
 リスク:
 
-- 現状はアプリケーション実装に依存したアクセス制御のため、将来的には RLS 導入で DB 側の防御を追加する必要があります
-- `ALLOW_EMAILS` の運用ミス（設定漏れ/更新漏れ）は、意図しないアクセス許可につながる可能性があります
+- 現状はアプリケーション実装に依存したアクセス制御のため、将来的には RLS 導入で DB 側の防御を追加する必要がある
+- `ALLOW_EMAILS` の運用ミス（設定漏れ/更新漏れ）は、意図しないアクセス許可につながる可能性がある
 
 ## 1. セットアップ手順
 
@@ -104,8 +104,8 @@ TEST_USER_EMAIL=test@example.com
 TEST_USER_PASSWORD=your-test-password
 ```
 
-- `ALLOW_EMAILS`: カンマ区切りの許可メール一覧。ログイン直後にallowlist判定し、未許可は即サインアウトします。
-- 本番環境では `ALLOW_EMAILS` 未設定時に起動エラー（fail fast）になります。
+- `ALLOW_EMAILS`: カンマ区切りの許可メール一覧。ログイン直後にallowlist判定し、未許可は即サインアウト。
+- 本番環境では `ALLOW_EMAILS` 未設定時に起動エラー（fail fast）となる。
 
 ## 3. Supabase設定手順
 
@@ -119,7 +119,7 @@ TEST_USER_PASSWORD=your-test-password
 
 ## 4. Docker起動手順
 
-通常開発は `pnpm dev` を推奨。Dockerは将来のローカルSupabase CLI連携を見据えた準備です。
+通常開発は `pnpm dev` を推奨。Dockerは将来のローカルSupabase CLI連携を見据えた準備。
 
 ```bash
 docker compose up --build
@@ -156,9 +156,9 @@ pnpm gitleaks
 
 ### RLS未対応
 
-現在、Supabase PostgresのRLSは未使用です。代わりにアプリ側で `ownerId` チェックを強制しています。
+現在、Supabase PostgresのRLSは未使用。代わりにアプリ側で `ownerId` チェックを強制。
 
-注意点: PrismaのDB直接接続では、リクエスト単位JWTがDBへ伝播せず、`auth.uid()`ベースのRLSをそのまま適用しづらいことが多いです。
+注意点: PrismaのDB直接接続では、リクエスト単位JWTがDBへ伝播せず、`auth.uid()`ベースのRLSをそのまま適用しづらいことが多い。
 
 将来RLS導入時は、以下からDBアクセス方式を再選定してください。
 
@@ -181,8 +181,8 @@ CREATE POLICY "owner_only" ON "Prompt"
 
 ### GitHub OAuth E2E未対応
 
-GitHub OAuthは外部UI自動化が不安定なため、E2Eはメール/パスワード認証で実施しています。
-また、クリップボード確認は環境差分で不安定になりやすいため、E2Eでは `navigator.clipboard.writeText` をスタブしてUI挙動を検証しています。
+GitHub OAuthは外部UI自動化が不安定なため、E2Eはメール/パスワード認証で実施。
+また、クリップボード確認は環境差分で不安定になりやすいため、E2Eでは `navigator.clipboard.writeText` をスタブしてUI挙動を検証。
 
 将来対応方針:
 

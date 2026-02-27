@@ -14,7 +14,7 @@ const RootLayout = ({ children }: { children: ReactNode }) => {
   return (
     <html lang="ja" suppressHydrationWarning>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {children}
         </ThemeProvider>
       </body>

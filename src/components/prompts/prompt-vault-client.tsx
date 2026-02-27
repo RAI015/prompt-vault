@@ -4,7 +4,6 @@ import type { Prompt } from "@prisma/client";
 import { Braces, Copy, Eraser, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -524,7 +523,6 @@ export const PromptVaultClient = ({ initialPrompts }: { initialPrompts: Prompt[]
       <header className="flex h-14 items-center justify-between border-b px-4">
         <div className="font-semibold">Prompt Vault</div>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <Button variant="outline" onClick={logout} disabled={isPending}>
             ログアウト
           </Button>

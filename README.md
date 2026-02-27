@@ -1,6 +1,7 @@
 # Prompt Vault MVP
 
 Next.js (App Router) + Supabase Auth + Prisma で作る、個人用の Prompt Vault です。
+> 注: 未ログインでも「デモを見る（閲覧のみ）」で閲覧用デモを確認できます（編集・保存は不可）。
 
 [![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
 [![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)

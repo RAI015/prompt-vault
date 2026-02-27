@@ -1,14 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
-
 import { Button } from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/error-text";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { createClient } from "@/lib/supabase/client";
 import { emailPasswordSchema } from "@/schemas/auth";
+import type { Route } from "next";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useState, useTransition } from "react";
 
 export const LoginForm = ({ initialError }: { initialError?: string }) => {
   const router = useRouter();
@@ -81,6 +82,8 @@ export const LoginForm = ({ initialError }: { initialError?: string }) => {
 
       <form className="space-y-4" onSubmit={onSubmitEmailPassword}>
         <div className="space-y-1">
+          <div className="my-6 h-px bg-border" />
+
           <label htmlFor="email" className="text-sm font-medium">
             メールアドレス
           </label>
@@ -123,6 +126,17 @@ export const LoginForm = ({ initialError }: { initialError?: string }) => {
       >
         GitHubでログイン
       </Button>
+
+      <div className="my-6 h-px bg-border" />
+
+      <div className="flex justify-center">
+        <Link
+          href={"/demo" as Route}
+          className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          デモを見る（閲覧のみ）
+        </Link>
+      </div>
     </div>
   );
 };

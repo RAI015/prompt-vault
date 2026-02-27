@@ -1,7 +1,7 @@
 # Prompt Vault MVP
 
-個人用の Prompt Vault
-> 注: 未ログインでも「デモを見る（閲覧のみ）」で閲覧用デモを確認可能（編集・保存は不可）。
+個人用の Prompt Vault（開発テンプレ特化：AI Agent向け実装依頼/BUG切り分け/PRレビュー/E2E調査などの“作業プロトコル”を素早く呼び出して使う）
+> 注: [デモ（閲覧のみ／編集・保存不可）](https://prompt-vault-gilt.vercel.app/demo)
 
 [![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
 [![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)
@@ -50,7 +50,7 @@ CI（GitHub Actions）:
 
 ## セキュリティと制約
 
-保証すること:
+実装していること:
 
 - 認証は Supabase Auth を使用（GitHub OAuth / メール・パスワード）
 - `ALLOW_EMAILS` で許可メールのみ利用可能（未許可はログイン直後にサインアウト）

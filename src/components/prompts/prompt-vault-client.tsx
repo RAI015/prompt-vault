@@ -503,6 +503,30 @@ export const PromptVaultClient = ({
     localStorage.removeItem(placeholderValuesStorageKey);
   }, [placeholderValuesStorageKey]);
 
+  const fillPlaceholderExamples = useCallback(() => {
+    setPlaceholderValues((prev) => {
+      const next = { ...prev };
+      let hasChanges = false;
+
+      for (const key of placeholders) {
+        const currentValue = prev[key] ?? "";
+        if (currentValue.trim().length > 0) {
+          continue;
+        }
+
+        const example = getPlaceholderFieldSchema(key)?.example;
+        if (!example) {
+          continue;
+        }
+
+        next[key] = example;
+        hasChanges = true;
+      }
+
+      return hasChanges ? next : prev;
+    });
+  }, [placeholders]);
+
   const applyErrorLogsTransform = useCallback(
     (key: string, transform: (value: string) => string) => {
       const current = placeholderValues[key] ?? "";
@@ -573,6 +597,14 @@ export const PromptVaultClient = ({
   const canClearPlaceholders = placeholders.some(
     (key) => (placeholderValues[key] ?? "").length > 0,
   );
+  const canFillPlaceholderExamples = placeholders.some((key) => {
+    const example = getPlaceholderFieldSchema(key)?.example;
+    if (!example) {
+      return false;
+    }
+
+    return (placeholderValues[key] ?? "").trim().length === 0;
+  });
   const renderPlaceholderField = (key: string) => {
     const schema = getPlaceholderFieldSchema(key);
     const isLongText = schema?.type === "longText" || (!schema && isLongTextPlaceholder(key));
@@ -609,6 +641,17 @@ export const PromptVaultClient = ({
                   行数: {splitLines(placeholderValues[key] ?? "").length}
                 </p>
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={fillPlaceholderExamples}
+                    disabled={!canFillPlaceholderExamples}
+                    title="空欄のうち、サンプルが定義されている項目だけ埋めます"
+                    data-pv={PV_SELECTORS.fillPlaceholderExamplesButton}
+                  >
+                    空欄にサンプル
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -919,17 +962,19 @@ export const PromptVaultClient = ({
                       <h3 className="font-medium">プレースホルダ入力</h3>
                       <Badge variant="secondary">{placeholders.length}</Badge>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearPlaceholderValues}
-                      disabled={!canClearPlaceholders}
-                      title="入力をすべて空にします"
-                      data-pv={PV_SELECTORS.clearPlaceholdersButton}
-                    >
-                      <Eraser className="mr-2 h-4 w-4" />
-                      全消去
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearPlaceholderValues}
+                        disabled={!canClearPlaceholders}
+                        title="入力をすべて空にします"
+                        data-pv={PV_SELECTORS.clearPlaceholdersButton}
+                      >
+                        <Eraser className="mr-2 h-4 w-4" />
+                        全消去
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     「{"{{...}}"}」ごとの値を入力すると、下の「レンダリング結果」に反映されます。

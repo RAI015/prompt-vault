@@ -92,8 +92,8 @@ test.describe("Prompt Vault E2E", () => {
     const undoButton = page.getByTestId(getPlaceholderLogActionSelector(placeholderKey, "undo"));
 
     await expect(logInput).toBeVisible();
-    await expect(logInput).toHaveAttribute("placeholder", "Paste error log here...");
-    await expect(page.getByLabel("Error log")).toBeVisible();
+    await expect(logInput).toHaveAttribute("placeholder", "エラーログを貼り付け");
+    await expect(page.getByLabel("エラーログ")).toBeVisible();
     await expect(headButton).toBeVisible();
     await expect(undoButton).toBeDisabled();
 
@@ -150,10 +150,10 @@ test.describe("Prompt Vault E2E", () => {
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
     await expect(input).toBeVisible();
-    await expect(page.getByLabel("Error logs")).toBeVisible();
+    await expect(page.getByLabel("エラーログ")).toBeVisible();
     await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveAttribute(
       "placeholder",
-      "Paste error logs here...",
+      "エラーログを貼り付け",
     );
 
     await input.fill("E2Eデモ入力");

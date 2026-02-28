@@ -12,17 +12,26 @@ export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
   {
     key: "error_logs",
     type: "longText",
-    label: "Error logs",
-    placeholder: "Paste error logs here...",
+    label: "エラーログ",
+    placeholder: "エラーログを貼り付け",
   },
   {
     key: "error_log",
     type: "longText",
-    label: "Error log",
-    placeholder: "Paste error log here...",
+    label: "エラーログ",
+    placeholder: "エラーログを貼り付け",
   },
 ];
 
+const PLACEHOLDER_FIELD_SCHEMA_BY_KEY = new Map<string, FieldSchema>();
+
+for (const schema of PLACEHOLDER_FIELD_SCHEMAS) {
+  if (PLACEHOLDER_FIELD_SCHEMA_BY_KEY.has(schema.key)) {
+    throw new Error(`Duplicate placeholder field schema key: ${schema.key}`);
+  }
+  PLACEHOLDER_FIELD_SCHEMA_BY_KEY.set(schema.key, schema);
+}
+
 export const getPlaceholderFieldSchema = (key: string): FieldSchema | undefined => {
-  return PLACEHOLDER_FIELD_SCHEMAS.find((schema) => schema.key === key);
+  return PLACEHOLDER_FIELD_SCHEMA_BY_KEY.get(key);
 };

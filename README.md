@@ -1,7 +1,14 @@
 # Prompt Vault MVP
 
-個人用の Prompt Vault（開発テンプレ特化：AI Agent向け実装依頼/BUG切り分け/PRレビュー/E2E調査などの“作業プロトコル”を素早く呼び出して使う）
-> 注: [デモ（閲覧のみ／編集・保存不可）](https://prompt-vault-gilt.vercel.app/demo)
+個人用 Prompt Vault（開発テンプレ特化）
+AI Agent向けの実装依頼 / BUG切り分け / PRレビュー / E2E調査を “作業プロトコル” として素早く呼び出して使う。
+
+🔗 Demo（閲覧のみ／編集・保存不可）: https://prompt-vault-gilt.vercel.app/demo
+
+- `/` で検索フォーカス、Enterで確定→すぐコピー導線
+- placeholder入力→生成結果（本文 / Markdown）をコピー
+- Playwright E2E（`data-pv` セレクタ集約）で回帰を担保
+
 
 [![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
 [![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)
@@ -66,6 +73,11 @@ CI（GitHub Actions）:
 
 - 現状はアプリケーション実装に依存したアクセス制御のため、将来的には RLS 導入で DB 側の防御を追加する必要がある
 - `ALLOW_EMAILS` の運用ミス（設定漏れ/更新漏れ）は、意図しないアクセス許可につながる可能性がある
+
+## Specs (AI-assisted)
+
+`docs/specs/` には、AI（Codex）に依頼した初期要件メモ（v2.1）のみを置いている。
+現行の仕様・挙動は README とコードが正であり、spec は当時の設計意図の記録として残している。
 
 ## 1. セットアップ手順
 

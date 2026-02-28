@@ -54,9 +54,10 @@ const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
   tagsCsv: prompt?.tags.join(", ") ?? "",
 });
 
-const isLongTextPlaceholder = (key: string): boolean => {
-  return /(^|_)(logs|text|details|content|body|notes?)($|_)/i.test(key);
-};
+const LONGTEXT_SUFFIXES = ["logs", "text", "details", "content", "body", "notes"] as const;
+const LONGTEXT_RE = new RegExp(`(^|_)(${LONGTEXT_SUFFIXES.join("|")})($|_)`, "i");
+
+const isLongTextPlaceholder = (key: string): boolean => LONGTEXT_RE.test(key);
 
 const isLogsPlaceholder = (key: string): boolean => {
   return key.toLowerCase().endsWith("_logs");

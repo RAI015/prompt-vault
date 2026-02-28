@@ -1,6 +1,6 @@
 import type { Prompt } from "@prisma/client";
 
-type DemoPrompt = Pick<Prompt, "id" | "title" | "tags" | "body">;
+type DemoPrompt = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
 
 export const DEMO_PROMPTS: DemoPrompt[] = [
   {
@@ -33,6 +33,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "4. 落ちたら直して通すまで",
       "5. 変更理由・影響範囲・テスト観点をPR本文用に要約",
     ].join("\n"),
+    pinnedAt: null,
   },
 
   {
@@ -56,6 +57,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "- 直前に変えた点: {{change_text}}",
       "- 再現手順: {{steps_text}}",
     ].join("\n"),
+    pinnedAt: null,
   },
 
   {
@@ -80,6 +82,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "- 例外/エラー時の挙動",
       "- テストの更新漏れ",
     ].join("\n"),
+    pinnedAt: null,
   },
 
   {
@@ -104,6 +107,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "- 文言依存になっていないか",
       "- waitForTimeout で誤魔化していないか",
     ].join("\n"),
+    pinnedAt: null,
   },
 
   {
@@ -133,6 +137,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "## エラーログ",
       "{{error_logs}}",
     ].join("\n"),
+    pinnedAt: null,
   },
 
   {
@@ -162,5 +167,6 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "- ただし推測できるなら質問なしで進めてOK。",
       "- セキュリティ注意：公開してはいけない値（秘密鍵/トークン等）がある場合は明示して。",
     ].join("\n"),
+    pinnedAt: null,
   },
 ];

@@ -192,6 +192,10 @@ test.describe("Prompt Vault E2E", () => {
     await expect(input).toHaveValue("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);
 
+    await page.reload();
+    await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");
+    await expect(errorLogsInput).toHaveValue(errorLogsExample);
+
     await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
     await errorLogsInput.fill("手入力ログ");
     await expect(fillExampleButton).toBeDisabled();

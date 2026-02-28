@@ -212,3 +212,6 @@ pnpm prisma:migrate
 pnpm test:e2e
 pnpm gitleaks
 ```
+
+## License
+Note: No license is granted for this repository.

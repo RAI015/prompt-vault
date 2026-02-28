@@ -55,6 +55,17 @@ CI（GitHub Actions）:
 - `CI_DATABASE_PROJECT_REF`（CI用Supabaseのproject ref）
 - `CI_CLEANUP_ALLOW_EMAILS`（削除対象メール一覧。カンマ区切り）
 
+`e2e` に必要な Secrets（DB関連）:
+
+- `DATABASE_URL`
+  - CI用Supabase DBの接続URLを設定する
+  - `e2e.yml` では `pnpm prisma migrate deploy` と `pnpm test:e2e` の両方で使う
+  - Supabase の `Connect > Session pooler` で表示される `aws-...pooler.supabase.com:5432` の接続文字列を使う
+  - `sslmode=require` を付ける
+- `CI_CLEANUP_DATABASE_URL`
+  - cleanup workflow 専用
+  - `e2e.yml` では使わない
+
 ## セキュリティと制約
 
 実装していること:
@@ -118,6 +129,9 @@ TEST_USER_PASSWORD=your-test-password
 
 - `ALLOW_EMAILS`: カンマ区切りの許可メール一覧。ログイン直後にallowlist判定し、未許可は即サインアウト。
 - 本番環境では `ALLOW_EMAILS` 未設定時に起動エラー（fail fast）となる。
+- CI の `DATABASE_URL` は本番用ではなく、CI 用 Supabase DB の接続文字列を設定する。
+- CI では `DATABASE_URL` に Supabase の `Session pooler`（`aws-...pooler.supabase.com:5432`）を使う。
+- `Direct connection` や transaction pooler（`6543`）は今回の CI E2E / migration では使わない。
 
 ## 3. Supabase設定手順
 

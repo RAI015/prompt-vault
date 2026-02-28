@@ -165,25 +165,47 @@ test.describe("Prompt Vault E2E", () => {
 
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
+    const errorLogsInput = page.getByTestId(getPlaceholderInputSelector("error_logs"));
+    const fillExampleButton = page.getByTestId(PV_SELECTORS.fillPlaceholderExamplesButton);
+    const errorLogsExample = [
+      "PrismaClientInitializationError: Can't reach database server at `db.example.supabase.co:5432`",
+      "",
+      "Environment:",
+      "- local (pnpm dev)",
+      "- Node: 20.x",
+      "- OS: macOS",
+      "",
+      "Steps tried:",
+      "- nslookup db.example.supabase.co -> No answer",
+      "- Retry with DNS 1.1.1.1 -> OK",
+    ].join("\n");
     await expect(input).toBeVisible();
     await expect(page.getByLabel("エラーログ")).toBeVisible();
-    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveAttribute(
-      "placeholder",
-      "エラーログを貼り付け",
-    );
+    await expect(errorLogsInput).toHaveAttribute("placeholder", "エラーログを貼り付け");
+    await expect(fillExampleButton).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.clearPlaceholdersButton)).toHaveCount(1);
 
     await input.fill("E2Eデモ入力");
-    await page.getByTestId(getPlaceholderInputSelector("error_logs")).fill("デモログ");
+    await fillExampleButton.click();
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("デモログ");
+    await expect(errorLogsInput).toHaveValue(errorLogsExample);
+    await expect(input).toHaveValue("E2Eデモ入力");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);
 
     await page.reload();
     await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");
-    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue(
-      "デモログ",
-    );
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("デモログ");
+    await expect(errorLogsInput).toHaveValue(errorLogsExample);
+
+    await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
+    await errorLogsInput.fill("手入力ログ");
+    await expect(fillExampleButton).toBeDisabled();
+    await expect(errorLogsInput).toHaveValue("手入力ログ");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("手入力ログ");
+
+    await page.reload();
+    await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("");
+    await expect(errorLogsInput).toHaveValue("手入力ログ");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("手入力ログ");
 
     // 禁止操作がUIに出ていない（消した前提）
     await expect(page.getByTestId(PV_SELECTORS.createButton)).toHaveCount(0);

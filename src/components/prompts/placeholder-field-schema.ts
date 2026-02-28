@@ -14,6 +14,16 @@ export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
     type: "longText",
     label: "エラーログ",
     placeholder: "エラーログを貼り付け",
+    example: `PrismaClientInitializationError: Can't reach database server at \`db.example.supabase.co:5432\`
+
+Environment:
+- local (pnpm dev)
+- Node: 20.x
+- OS: macOS
+
+Steps tried:
+- nslookup db.example.supabase.co -> No answer
+- Retry with DNS 1.1.1.1 -> OK`,
   },
   {
     key: "error_log",

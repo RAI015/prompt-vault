@@ -233,6 +233,7 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByTestId(PV_SELECTORS.searchInput).fill(String(unique));
 
     const itemsAfterPinB = page.getByTestId(PV_SELECTORS.searchResultItem);
+    await expect(itemsAfterPinB).toHaveCount(2, { timeout: 10_000 });
     await expect(itemsAfterPinB.nth(0)).toContainText(titleB);
 
     await page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: titleA }).click();
@@ -240,6 +241,7 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByTestId(PV_SELECTORS.pinButton).click();
 
     const itemsAfterPinA = page.getByTestId(PV_SELECTORS.searchResultItem);
+    await expect(itemsAfterPinA).toHaveCount(2, { timeout: 10_000 });
     await expect(itemsAfterPinA.nth(0)).toContainText(titleA);
     await expect(itemsAfterPinA.nth(1)).toContainText(titleB);
 

@@ -100,8 +100,8 @@ export const toggleMyPromptPin = async (promptId: string): Promise<ActionResult<
     );
 
     return ok(prompts);
-  } catch (errorn) {
-    if (errorn instanceof Error && errorn.message === "PROMPT_NOT_FOUND") {
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROMPT_NOT_FOUND") {
       return err("NOT_FOUND", "対象のプロンプトが見つかりません");
     }
 

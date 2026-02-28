@@ -20,7 +20,7 @@ test.describe("Prompt Vault E2E", () => {
 
     const unique = Date.now();
     const title = `E2E Prompt ${unique}`;
-    const body = "求人: {{JOB_DESC}}\\nログ: {{LOGS}}";
+    const body = "求人: {{JOB_DESC}}\\nログ: {{error_logs}}";
 
     await page.goto("/login");
     await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
@@ -40,13 +40,16 @@ test.describe("Prompt Vault E2E", () => {
     await expect(
       page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: title }),
     ).toBeVisible();
-    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveAttribute(
+    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveAttribute(
       "placeholder",
-      "複数行の入力に対応",
+      "エラーログを貼り付け",
     );
+    await expect(
+      page.getByTestId(getPlaceholderLogActionSelector("error_logs", "head")),
+    ).toBeVisible();
 
     await page.getByTestId(getPlaceholderInputSelector("JOB_DESC")).fill("フロントエンド開発");
-    await page.getByTestId(getPlaceholderInputSelector("LOGS")).fill("エラーログA");
+    await page.getByTestId(getPlaceholderInputSelector("error_logs")).fill("エラーログA");
 
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(
       "求人: フロントエンド開発",
@@ -58,7 +61,9 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue(
       "フロントエンド開発",
     );
-    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("エラーログA");
+    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue(
+      "エラーログA",
+    );
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(
       "求人: フロントエンド開発",
     );
@@ -66,7 +71,7 @@ test.describe("Prompt Vault E2E", () => {
 
     await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
     await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
-    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("");
+    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue("");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText(
       "フロントエンド開発",
     );
@@ -75,16 +80,16 @@ test.describe("Prompt Vault E2E", () => {
     await page.reload();
     await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
     await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
-    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("");
+    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue("");
 
     await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
     await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
   });
 
-  test("error_log の入力欄でログ短縮ボタンとUndoが使える", async ({ page }) => {
+  test("error_logs の入力欄でログ短縮ボタンとUndoが使える", async ({ page }) => {
     const unique = Date.now();
     const title = `E2E Error Log ${unique}`;
-    const body = "調査用ログ\\n{{error_log}}";
+    const body = "調査用ログ\\n{{error_logs}}";
     const fullLog = Array.from({ length: 120 }, (_, index) => `line-${index + 1}`).join("\n");
     const head50 = Array.from({ length: 50 }, (_, index) => `line-${index + 1}`).join("\n");
 
@@ -98,10 +103,10 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByTestId(PV_SELECTORS.createButton).click();
     await page.getByTestId(PV_SELECTORS.titleInput).fill(title);
     await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
-    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, error-log");
+    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, error-logs");
     await page.getByTestId(PV_SELECTORS.saveButton).click();
 
-    const placeholderKey = "error_log";
+    const placeholderKey = "error_logs";
     const logInput = page.getByTestId(getPlaceholderInputSelector(placeholderKey));
     const lineCount = page.getByTestId(getPlaceholderLogLineCountSelector(placeholderKey));
     const headButton = page.getByTestId(getPlaceholderLogActionSelector(placeholderKey, "head"));

@@ -55,12 +55,11 @@ const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
 });
 
 const isLongTextPlaceholder = (key: string): boolean => {
-  return /(log|body|text|content|detail|error|stack|message|context|note)/i.test(key);
+  return /(^|_)(logs|text|details|content|body|notes?)$/i.test(key);
 };
 
-const isErrorLogsPlaceholder = (key: string): boolean => {
-  const normalizedKey = key.toLowerCase();
-  return normalizedKey === "error_logs" || normalizedKey === "error_log";
+const isLogsPlaceholder = (key: string): boolean => {
+  return key.toLowerCase().endsWith("_logs");
 };
 
 const LOG_TRIM_LINE_COUNT = 50;
@@ -632,7 +631,7 @@ export const PromptVaultClient = ({
                 }))
               }
             />
-            {isErrorLogsPlaceholder(key) ? (
+            {isLogsPlaceholder(key) ? (
               <div className="space-y-2">
                 <p
                   className="text-xs text-muted-foreground"

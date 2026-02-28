@@ -25,12 +25,6 @@ Steps tried:
 - nslookup db.example.supabase.co -> No answer
 - Retry with DNS 1.1.1.1 -> OK`,
   },
-  {
-    key: "error_log",
-    type: "longText",
-    label: "エラーログ",
-    placeholder: "エラーログを貼り付け",
-  },
 ];
 
 const PLACEHOLDER_FIELD_SCHEMA_BY_KEY = new Map<string, FieldSchema>();

@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 20
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.CI_CLEANUP_DATABASE_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       ALLOW_EMAILS: ${{ secrets.ALLOW_EMAILS }}
@@ -30,6 +31,10 @@ jobs:
               missing=1
             fi
           done
+          if [ -z "${DIRECT_URL}" ]; then
+            echo "Missing secret: CI_CLEANUP_DATABASE_URL (used as DIRECT_URL)"
+            missing=1
+          fi
           if [ "$missing" -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else

@@ -6,6 +6,7 @@ import {
   deletePrompt,
   findPromptByIdAndOwner,
   listPromptsByOwner,
+  setPromptPinState,
   updatePrompt,
 } from "@/server/repositories/prompt-repository";
 import { getCurrentAppUser } from "@/server/services/auth-service";
@@ -77,6 +78,34 @@ export const updateMyPrompt = async (
     return ok(prompt);
   } catch {
     return err("DB_ERROR", "プロンプトの更新に失敗しました");
+  }
+};
+
+export const toggleMyPromptPin = async (promptId: string): Promise<ActionResult<Prompt[]>> => {
+  const appUserResult = await getCurrentAppUser();
+  if (appUserResult.error) {
+    return appUserResult;
+  }
+
+  try {
+    const existingPrompt = await findPromptByIdAndOwner(promptId, appUserResult.data.id);
+    if (!existingPrompt) {
+      return err("NOT_FOUND", "対象のプロンプトが見つかりません");
+    }
+
+    const prompts = await setPromptPinState(
+      appUserResult.data.id,
+      promptId,
+      existingPrompt.pinnedAt === null,
+    );
+
+    return ok(prompts);
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROMPT_NOT_FOUND") {
+      return err("NOT_FOUND", "対象のプロンプトが見つかりません");
+    }
+
+    return err("DB_ERROR", "プロンプトのピン設定の更新に失敗しました");
   }
 };
 

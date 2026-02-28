@@ -3,7 +3,12 @@
 import type { Prompt } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-import { createMyPrompt, deleteMyPrompt, updateMyPrompt } from "@/server/services/prompt-service";
+import {
+  createMyPrompt,
+  deleteMyPrompt,
+  toggleMyPromptPin,
+  updateMyPrompt,
+} from "@/server/services/prompt-service";
 import type { ActionResult } from "@/types/action-result";
 
 type PromptActionPayload = {
@@ -74,6 +79,26 @@ export const deletePromptAction = async (
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "削除に失敗しました。再度お試しください。",
+      },
+    };
+  }
+};
+
+export const togglePromptPinAction = async (promptId: string): Promise<ActionResult<Prompt[]>> => {
+  try {
+    const result = await toggleMyPromptPin(promptId);
+    if (result.error) {
+      return result;
+    }
+
+    revalidatePath("/app/prompts");
+    return result;
+  } catch {
+    return {
+      data: null,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "ピンの切り替えに失敗しました。再度お試しください。",
       },
     };
   }

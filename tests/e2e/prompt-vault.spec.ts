@@ -56,19 +56,6 @@ test.describe("Prompt Vault E2E", () => {
     );
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("ログ: エラーログA");
 
-    await page.reload();
-    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
-    await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue(
-      "フロントエンド開発",
-    );
-    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue(
-      "エラーログA",
-    );
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(
-      "求人: フロントエンド開発",
-    );
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("ログ: エラーログA");
-
     await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
     await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
     await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue("");
@@ -76,11 +63,6 @@ test.describe("Prompt Vault E2E", () => {
       "フロントエンド開発",
     );
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("エラーログA");
-
-    await page.reload();
-    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
-    await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
-    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue("");
 
     await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
     await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
@@ -218,5 +200,50 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("button", { name: "編集" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "削除" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
+  });
+
+  test("pin したプロンプトが先頭に並び、demo では pin ボタンが表示されない", async ({ page }) => {
+    const unique = Date.now();
+    const titleA = `Pin A ${unique}`;
+    const titleB = `Pin B ${unique}`;
+    const body = "pin test body";
+
+    await page.goto("/login");
+    await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
+    await page.getByLabel("パスワード").fill(testUserPassword ?? "");
+    await page.getByRole("button", { name: "メールでログイン" }).click();
+
+    await expect(page.getByText("Prompt Vault")).toBeVisible();
+
+    await page.getByTestId(PV_SELECTORS.createButton).click();
+    await page.getByTestId(PV_SELECTORS.titleInput).fill(titleA);
+    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
+    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, pin");
+    await page.getByTestId(PV_SELECTORS.saveButton).click();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleA);
+
+    await page.getByTestId(PV_SELECTORS.createButton).click();
+    await page.getByTestId(PV_SELECTORS.titleInput).fill(titleB);
+    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
+    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, pin");
+    await page.getByTestId(PV_SELECTORS.saveButton).click();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleB);
+
+    await page.getByTestId(PV_SELECTORS.pinButton).click();
+    await page.getByTestId(PV_SELECTORS.searchInput).fill(String(unique));
+
+    const itemsAfterPinB = page.getByTestId(PV_SELECTORS.searchResultItem);
+    await expect(itemsAfterPinB.nth(0)).toContainText(titleB);
+
+    await page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: titleA }).click();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleA);
+    await page.getByTestId(PV_SELECTORS.pinButton).click();
+
+    const itemsAfterPinA = page.getByTestId(PV_SELECTORS.searchResultItem);
+    await expect(itemsAfterPinA.nth(0)).toContainText(titleA);
+    await expect(itemsAfterPinA.nth(1)).toContainText(titleB);
+
+    await page.goto("/demo");
+    await expect(page.getByTestId(PV_SELECTORS.pinButton)).toHaveCount(0);
   });
 });

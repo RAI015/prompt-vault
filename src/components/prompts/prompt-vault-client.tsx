@@ -32,6 +32,7 @@ import { parseTagCsv, promptSchema } from "@/schemas/prompt";
 import {
   createPromptAction,
   deletePromptAction,
+  togglePromptPinAction,
   updatePromptAction,
 } from "@/server/actions/prompt-actions";
 import { extractPlaceholders, renderTemplate } from "@/utils/placeholder";
@@ -115,7 +116,7 @@ type ToastState = {
   variant: "success" | "error";
 };
 
-type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body">;
+type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
 type PromptVaultMode = "app" | "demo";
 
 export const PromptVaultClient = ({
@@ -457,6 +458,25 @@ export const PromptVaultClient = ({
     setIsCreating(false);
     setFormState(toPromptInputState(selectedPrompt));
     resetFormErrors();
+  };
+
+  const togglePin = () => {
+    if (isDemo) return;
+    if (!selectedPrompt) {
+      return;
+    }
+
+    setFormError("");
+
+    startTransition(async () => {
+      const result = await togglePromptPinAction(selectedPrompt.id);
+      if (result.error) {
+        setFormError(result.error.message);
+        return;
+      }
+
+      setPrompts(result.data);
+    });
   };
 
   const showToast = useCallback((message: string, variant: ToastState["variant"]) => {
@@ -817,7 +837,10 @@ export const PromptVaultClient = ({
                     selectedPromptId === prompt.id && !isFormMode ? "bg-accent" : "hover:bg-muted"
                   }`}
                 >
-                  <p className="line-clamp-1 text-sm font-medium">{prompt.title}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="line-clamp-1 text-sm font-medium">{prompt.title}</p>
+                    {prompt.pinnedAt ? <Badge variant="secondary">PIN</Badge> : null}
+                  </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {prompt.tags.slice(0, 3).map((tag) => (
                       <Badge key={tag}>{tag}</Badge>
@@ -1024,6 +1047,14 @@ export const PromptVaultClient = ({
 
               {!isDemo && (
                 <div className="flex gap-2">
+                  <Button
+                    variant={"outline"}
+                    onClick={togglePin}
+                    disabled={isPending}
+                    data-pv={PV_SELECTORS.pinButton}
+                  >
+                    {selectedPrompt.pinnedAt ? "ピン解除" : "ピン留め"}
+                  </Button>
                   <Button variant="outline" onClick={startEdit}>
                     <Pencil className="mr-2 h-4 w-4" />
                     編集

@@ -65,6 +65,7 @@ const isErrorLogsPlaceholder = (key: string): boolean => {
 
 const LOG_TRIM_LINE_COUNT = 50;
 const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
+const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
 const MAX_LEFT_PANE_WIDTH = 520;
@@ -125,6 +126,7 @@ export const PromptVaultClient = ({
   mode?: PromptVaultMode;
 }) => {
   const isDemo = mode === "demo";
+  const placeholderValuesStorageKey = `${PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX}${mode}`;
 
   const [prompts, setPrompts] = useState<PromptLike[]>(initialPrompts);
   const [search, setSearch] = useState("");
@@ -171,6 +173,40 @@ export const PromptVaultClient = ({
       setLeftPaneWidth(width);
     }
   }, []);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(placeholderValuesStorageKey);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        localStorage.removeItem(placeholderValuesStorageKey);
+        return;
+      }
+
+      const nextValues = Object.fromEntries(
+        Object.entries(parsed).filter(
+          (entry): entry is [string, string] =>
+            typeof entry[0] === "string" && typeof entry[1] === "string",
+        ),
+      );
+      setPlaceholderValues(nextValues);
+    } catch {
+      localStorage.removeItem(placeholderValuesStorageKey);
+    }
+  }, [placeholderValuesStorageKey]);
+
+  useEffect(() => {
+    if (Object.keys(placeholderValues).length === 0) {
+      localStorage.removeItem(placeholderValuesStorageKey);
+      return;
+    }
+
+    localStorage.setItem(placeholderValuesStorageKey, JSON.stringify(placeholderValues));
+  }, [placeholderValues, placeholderValuesStorageKey]);
 
   useEffect(() => {
     leftPaneWidthRef.current = leftPaneWidth;
@@ -464,7 +500,8 @@ export const PromptVaultClient = ({
   const clearPlaceholderValues = useCallback(() => {
     setPlaceholderValues({});
     setPlaceholderUndoValues({});
-  }, []);
+    localStorage.removeItem(placeholderValuesStorageKey);
+  }, [placeholderValuesStorageKey]);
 
   const applyErrorLogsTransform = useCallback(
     (key: string, transform: (value: string) => string) => {

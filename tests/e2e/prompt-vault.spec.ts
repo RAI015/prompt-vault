@@ -53,6 +53,17 @@ test.describe("Prompt Vault E2E", () => {
     );
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("ログ: エラーログA");
 
+    await page.reload();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
+    await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue(
+      "フロントエンド開発",
+    );
+    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("エラーログA");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(
+      "求人: フロントエンド開発",
+    );
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("ログ: エラーログA");
+
     await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
     await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
     await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("");
@@ -60,6 +71,11 @@ test.describe("Prompt Vault E2E", () => {
       "フロントエンド開発",
     );
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("エラーログA");
+
+    await page.reload();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
+    await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toHaveValue("");
+    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveValue("");
 
     await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
     await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
@@ -157,7 +173,17 @@ test.describe("Prompt Vault E2E", () => {
     );
 
     await input.fill("E2Eデモ入力");
+    await page.getByTestId(getPlaceholderInputSelector("error_logs")).fill("デモログ");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("デモログ");
+
+    await page.reload();
+    await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");
+    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveValue(
+      "デモログ",
+    );
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("デモログ");
 
     // 禁止操作がUIに出ていない（消した前提）
     await expect(page.getByTestId(PV_SELECTORS.createButton)).toHaveCount(0);

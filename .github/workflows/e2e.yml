@@ -66,6 +66,9 @@ jobs:
       - name: Generate Prisma client
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm prisma:generate
+      - name: Apply Prisma migrations
+        if: ${{ steps.precheck.outputs.ready == 'true' }}
+        run: pnpm prisma migrate deploy
       - name: Run Playwright tests
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         run: pnpm test:e2e

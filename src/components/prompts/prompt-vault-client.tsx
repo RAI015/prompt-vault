@@ -55,7 +55,7 @@ const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
 });
 
 const isLongTextPlaceholder = (key: string): boolean => {
-  return /(^|_)(logs|text|details|content|body|notes?)$/i.test(key);
+  return /(^|_)(logs|text|details|content|body|notes?)($|_)/i.test(key);
 };
 
 const isLogsPlaceholder = (key: string): boolean => {

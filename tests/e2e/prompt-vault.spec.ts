@@ -40,6 +40,10 @@ test.describe("Prompt Vault E2E", () => {
     await expect(
       page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: title }),
     ).toBeVisible();
+    await expect(page.getByTestId(getPlaceholderInputSelector("LOGS"))).toHaveAttribute(
+      "placeholder",
+      "複数行の入力に対応",
+    );
 
     await page.getByTestId(getPlaceholderInputSelector("JOB_DESC")).fill("フロントエンド開発");
     await page.getByTestId(getPlaceholderInputSelector("LOGS")).fill("エラーログA");
@@ -88,6 +92,8 @@ test.describe("Prompt Vault E2E", () => {
     const undoButton = page.getByTestId(getPlaceholderLogActionSelector(placeholderKey, "undo"));
 
     await expect(logInput).toBeVisible();
+    await expect(logInput).toHaveAttribute("placeholder", "Paste error log here...");
+    await expect(page.getByLabel("Error log")).toBeVisible();
     await expect(headButton).toBeVisible();
     await expect(undoButton).toBeDisabled();
 
@@ -144,6 +150,11 @@ test.describe("Prompt Vault E2E", () => {
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
     await expect(input).toBeVisible();
+    await expect(page.getByLabel("Error logs")).toBeVisible();
+    await expect(page.getByTestId(getPlaceholderInputSelector("error_logs"))).toHaveAttribute(
+      "placeholder",
+      "Paste error logs here...",
+    );
 
     await input.fill("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");

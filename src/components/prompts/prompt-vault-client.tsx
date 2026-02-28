@@ -1,5 +1,6 @@
 "use client";
 
+import { getPlaceholderFieldSchema } from "@/components/prompts/placeholder-field-schema";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -535,6 +536,116 @@ export const PromptVaultClient = ({
   const canClearPlaceholders = placeholders.some(
     (key) => (placeholderValues[key] ?? "").length > 0,
   );
+  const renderPlaceholderField = (key: string) => {
+    const schema = getPlaceholderFieldSchema(key);
+    const isLongText = schema?.type === "longText" || (!schema && isLongTextPlaceholder(key));
+    const label = schema?.label ?? `{{${key}}}`;
+    const placeholderText = schema?.placeholder ?? (isLongText ? "複数行の入力に対応" : "値を入力");
+
+    return (
+      <div key={key} className="space-y-1">
+        <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
+          {label}
+        </label>
+        {isLongText ? (
+          <div className="space-y-2">
+            <Textarea
+              id={`placeholder-${key}`}
+              data-pv={getPlaceholderInputSelector(key)}
+              rows={6}
+              className="resize-y font-mono"
+              placeholder={placeholderText}
+              value={placeholderValues[key] ?? ""}
+              onChange={(event) =>
+                setPlaceholderValues((prev) => ({
+                  ...prev,
+                  [key]: event.target.value,
+                }))
+              }
+            />
+            {isErrorLogsPlaceholder(key) ? (
+              <div className="space-y-2">
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-pv={getPlaceholderLogLineCountSelector(key)}
+                >
+                  行数: {splitLines(placeholderValues[key] ?? "").length}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-pv={getPlaceholderLogActionSelector(key, "head")}
+                    title={`先頭から${LOG_TRIM_LINE_COUNT}行だけ残します`}
+                    onClick={() =>
+                      applyErrorLogsTransform(key, (value) =>
+                        toHeadLines(value, LOG_TRIM_LINE_COUNT),
+                      )
+                    }
+                  >
+                    先頭{LOG_TRIM_LINE_COUNT}行
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-pv={getPlaceholderLogActionSelector(key, "tail")}
+                    title={`末尾から${LOG_TRIM_LINE_COUNT}行だけ残します`}
+                    onClick={() =>
+                      applyErrorLogsTransform(key, (value) =>
+                        toTailLines(value, LOG_TRIM_LINE_COUNT),
+                      )
+                    }
+                  >
+                    末尾{LOG_TRIM_LINE_COUNT}行
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-pv={getPlaceholderLogActionSelector(key, "head-tail")}
+                    title={`先頭${LOG_TRIM_LINE_COUNT}行と末尾${LOG_TRIM_LINE_COUNT}行だけ残します`}
+                    onClick={() =>
+                      applyErrorLogsTransform(key, (value) =>
+                        toHeadTailLines(value, LOG_TRIM_LINE_COUNT),
+                      )
+                    }
+                  >
+                    先頭+末尾
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-pv={getPlaceholderLogActionSelector(key, "undo")}
+                    title="直前の短縮を取り消します"
+                    onClick={() => restoreErrorLogsValue(key)}
+                    disabled={placeholderUndoValues[key] === undefined}
+                  >
+                    元に戻す
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <Input
+            id={`placeholder-${key}`}
+            data-pv={getPlaceholderInputSelector(key)}
+            placeholder={placeholderText}
+            value={placeholderValues[key] ?? ""}
+            onChange={(event) =>
+              setPlaceholderValues((prev) => ({
+                ...prev,
+                [key]: event.target.value,
+              }))
+            }
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="h-screen overflow-hidden">
@@ -786,109 +897,7 @@ export const PromptVaultClient = ({
                   <p className="text-xs text-muted-foreground">
                     「{"{{...}}"}」ごとの値を入力すると、下の「レンダリング結果」に反映されます。
                   </p>
-                  {placeholders.map((key) => (
-                    <div key={key} className="space-y-1">
-                      <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
-                        {`{{${key}}}`}
-                      </label>
-                      {isLongTextPlaceholder(key) ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            id={`placeholder-${key}`}
-                            data-pv={getPlaceholderInputSelector(key)}
-                            rows={6}
-                            className="resize-y font-mono"
-                            placeholder="複数行の入力に対応"
-                            value={placeholderValues[key] ?? ""}
-                            onChange={(event) =>
-                              setPlaceholderValues((prev) => ({
-                                ...prev,
-                                [key]: event.target.value,
-                              }))
-                            }
-                          />
-                          {isErrorLogsPlaceholder(key) ? (
-                            <div className="space-y-2">
-                              <p
-                                className="text-xs text-muted-foreground"
-                                data-pv={getPlaceholderLogLineCountSelector(key)}
-                              >
-                                行数: {splitLines(placeholderValues[key] ?? "").length}
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  data-pv={getPlaceholderLogActionSelector(key, "head")}
-                                  title={`先頭から${LOG_TRIM_LINE_COUNT}行だけ残します`}
-                                  onClick={() =>
-                                    applyErrorLogsTransform(key, (value) =>
-                                      toHeadLines(value, LOG_TRIM_LINE_COUNT),
-                                    )
-                                  }
-                                >
-                                  先頭{LOG_TRIM_LINE_COUNT}行
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  data-pv={getPlaceholderLogActionSelector(key, "tail")}
-                                  title={`末尾から${LOG_TRIM_LINE_COUNT}行だけ残します`}
-                                  onClick={() =>
-                                    applyErrorLogsTransform(key, (value) =>
-                                      toTailLines(value, LOG_TRIM_LINE_COUNT),
-                                    )
-                                  }
-                                >
-                                  末尾{LOG_TRIM_LINE_COUNT}行
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  data-pv={getPlaceholderLogActionSelector(key, "head-tail")}
-                                  title={`先頭${LOG_TRIM_LINE_COUNT}行と末尾${LOG_TRIM_LINE_COUNT}行だけ残します`}
-                                  onClick={() =>
-                                    applyErrorLogsTransform(key, (value) =>
-                                      toHeadTailLines(value, LOG_TRIM_LINE_COUNT),
-                                    )
-                                  }
-                                >
-                                  先頭+末尾
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  data-pv={getPlaceholderLogActionSelector(key, "undo")}
-                                  title="直前の短縮を取り消します"
-                                  onClick={() => restoreErrorLogsValue(key)}
-                                  disabled={placeholderUndoValues[key] === undefined}
-                                >
-                                  元に戻す
-                                </Button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <Input
-                          id={`placeholder-${key}`}
-                          data-pv={getPlaceholderInputSelector(key)}
-                          placeholder="値を入力"
-                          value={placeholderValues[key] ?? ""}
-                          onChange={(event) =>
-                            setPlaceholderValues((prev) => ({
-                              ...prev,
-                              [key]: event.target.value,
-                            }))
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
+                  {placeholders.map((key) => renderPlaceholderField(key))}
                 </div>
               ) : null}
 

@@ -895,7 +895,7 @@ export const PromptVaultClient = ({
           ) : null}
 
           {isFormMode ? (
-            <div className="mx-auto min-h-0 max-w-4xl overflow-y-auto space-y-4">
+            <div className="mx-auto min-h-0 w-full max-w-4xl overflow-y-auto space-y-4">
               <h2 className="text-xl font-bold">
                 {isCreating ? "新規プロンプト作成" : "プロンプト編集"}
               </h2>
@@ -1043,147 +1043,143 @@ export const PromptVaultClient = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto pt-4">
-                <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                  <section className="flex min-h-0 flex-col space-y-3 rounded-md border bg-muted/20 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Braces className="h-4 w-4 text-muted-foreground" />
-                        <h3 className="font-medium">プレースホルダ入力</h3>
-                        <Badge variant="secondary">{placeholders.length}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={clearPlaceholderValues}
-                          disabled={!canClearPlaceholders}
-                          title="入力をすべて空にします"
-                          data-pv={PV_SELECTORS.clearPlaceholdersButton}
-                        >
-                          <Eraser className="mr-2 h-4 w-4" />
-                          全消去
-                        </Button>
-                      </div>
+              <div className="grid min-h-0 flex-1 gap-4 pt-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                <section className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-muted/20 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Braces className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-medium">プレースホルダ入力</h3>
+                      <Badge variant="secondary">{placeholders.length}</Badge>
                     </div>
-                    {placeholders.length > 0 ? (
-                      <ScrollArea className="min-h-0 flex-1 pr-3">
-                        <div className="space-y-3">
-                          <p className="text-xs text-muted-foreground">
-                            「{"{{...}}"}
-                            」ごとの値を入力すると、右のプレビューに反映されます。
-                          </p>
-                          {placeholders.map((key) => renderPlaceholderField(key))}
-                        </div>
-                      </ScrollArea>
-                    ) : (
-                      <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
-                        このプロンプトにはプレースホルダがありません。
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearPlaceholderValues}
+                        disabled={!canClearPlaceholders}
+                        title="入力をすべて空にします"
+                        data-pv={PV_SELECTORS.clearPlaceholdersButton}
+                      >
+                        <Eraser className="mr-2 h-4 w-4" />
+                        全消去
+                      </Button>
+                    </div>
+                  </div>
+                  {placeholders.length > 0 ? (
+                    <ScrollArea className="min-h-0 flex-1 pr-3">
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          「{"{{...}}"}
+                          」ごとの値を入力すると、右のプレビューに反映されます。
+                        </p>
+                        {placeholders.map((key) => renderPlaceholderField(key))}
                       </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
+                      このプロンプトにはプレースホルダがありません。
+                    </div>
+                  )}
+                </section>
+
+                <section className="flex min-h-0 flex-col overflow-hidden rounded-md border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div
+                      className="inline-flex rounded-lg border bg-muted p-1.5 shadow-sm"
+                      role="tablist"
+                      aria-label="プレビュー切り替え"
+                    >
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activePreviewTab === "rendered"}
+                        aria-controls="preview-rendered-panel"
+                        id="preview-rendered-tab"
+                        className={cn(
+                          "rounded-md px-3 py-1.5 text-sm transition-all",
+                          activePreviewTab === "rendered"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
+                            : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
+                        )}
+                        onClick={() => setActivePreviewTab("rendered")}
+                      >
+                        レンダリング結果
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activePreviewTab === "original"}
+                        aria-controls="preview-original-panel"
+                        id="preview-original-tab"
+                        className={cn(
+                          "rounded-md px-3 py-1.5 text-sm transition-all",
+                          activePreviewTab === "original"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
+                            : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
+                        )}
+                        onClick={() => setActivePreviewTab("original")}
+                      >
+                        元の文章
+                      </button>
+                    </div>
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyPlainText}
+                        title="プロンプト本文のみをコピーします"
+                        data-pv={PV_SELECTORS.copyBodyButton}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        本文コピー
+                        <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
+                          ⌥C
+                        </kbd>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyMarkdownText}
+                        title="ログ/コードを ``` で囲ってコピーします"
+                        data-pv={PV_SELECTORS.copyMarkdownButton}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        Markdown整形コピー
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    id="preview-rendered-panel"
+                    role="tabpanel"
+                    aria-labelledby="preview-rendered-tab"
+                    className={cn(
+                      "min-h-0 flex-1 flex-col space-y-2 my-3",
+                      activePreviewTab === "rendered" ? "flex" : "hidden",
                     )}
-                  </section>
-
-                  <section className="flex min-h-0 flex-col space-y-3 rounded-md border p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div
-                        className="inline-flex rounded-lg border bg-muted p-1.5 shadow-sm"
-                        role="tablist"
-                        aria-label="プレビュー切り替え"
-                      >
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={activePreviewTab === "rendered"}
-                          aria-controls="preview-rendered-panel"
-                          id="preview-rendered-tab"
-                          className={cn(
-                            "rounded-md px-3 py-1.5 text-sm transition-all",
-                            activePreviewTab === "rendered"
-                              ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
-                              : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
-                          )}
-                          onClick={() => setActivePreviewTab("rendered")}
-                        >
-                          レンダリング結果
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={activePreviewTab === "original"}
-                          aria-controls="preview-original-panel"
-                          id="preview-original-tab"
-                          className={cn(
-                            "rounded-md px-3 py-1.5 text-sm transition-all",
-                            activePreviewTab === "original"
-                              ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
-                              : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
-                          )}
-                          onClick={() => setActivePreviewTab("original")}
-                        >
-                          元の文章
-                        </button>
-                      </div>
-                      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={copyPlainText}
-                          title="プロンプト本文のみをコピーします"
-                          data-pv={PV_SELECTORS.copyBodyButton}
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          本文コピー
-                          <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                            ⌥C
-                          </kbd>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={copyMarkdownText}
-                          title="ログ/コードを ``` で囲ってコピーします"
-                          data-pv={PV_SELECTORS.copyMarkdownButton}
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          Markdown整形コピー
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div
-                      id="preview-rendered-panel"
-                      role="tabpanel"
-                      aria-labelledby="preview-rendered-tab"
-                      className={cn(
-                        "min-h-0 flex-1 flex-col space-y-2",
-                        activePreviewTab === "rendered" ? "flex" : "hidden",
-                      )}
+                  >
+                    <ScrollArea
+                      data-pv={PV_SELECTORS.renderedOutput}
+                      className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
                     >
-                      <p className="text-sm font-medium">レンダリング結果</p>
-                      <ScrollArea
-                        data-pv={PV_SELECTORS.renderedOutput}
-                        className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
-                      >
-                        {renderedBody}
-                      </ScrollArea>
-                    </div>
+                      {renderedBody}
+                    </ScrollArea>
+                  </div>
 
-                    <div
-                      id="preview-original-panel"
-                      role="tabpanel"
-                      aria-labelledby="preview-original-tab"
-                      className={cn(
-                        "min-h-0 flex-1 flex-col space-y-2",
-                        activePreviewTab === "original" ? "flex" : "hidden",
-                      )}
-                    >
-                      <p className="text-sm font-medium">元の文章</p>
-                      <ScrollArea className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
-                        {selectedPrompt.body}
-                      </ScrollArea>
-                    </div>
-                  </section>
-                </div>
+                  <div
+                    id="preview-original-panel"
+                    role="tabpanel"
+                    aria-labelledby="preview-original-tab"
+                    className={cn(
+                      "min-h-0 flex-1 flex-col space-y-2 my-3",
+                      activePreviewTab === "original" ? "flex" : "hidden",
+                    )}
+                  >
+                    <ScrollArea className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
+                      {selectedPrompt.body}
+                    </ScrollArea>
+                  </div>
+                </section>
               </div>
             </div>
           ) : null}

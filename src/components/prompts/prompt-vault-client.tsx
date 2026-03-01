@@ -28,6 +28,7 @@ import {
   getToastSelector,
 } from "@/constants/ui-selectors";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { parseTagCsv, promptSchema } from "@/schemas/prompt";
 import {
   createPromptAction,
@@ -118,6 +119,7 @@ type ToastState = {
 
 type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
 type PromptVaultMode = "app" | "demo";
+type PreviewTab = "rendered" | "original";
 
 export const PromptVaultClient = ({
   initialPrompts,
@@ -146,6 +148,7 @@ export const PromptVaultClient = ({
   );
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
+  const [activePreviewTab, setActivePreviewTab] = useState<PreviewTab>("rendered");
   const [toast, setToast] = useState<ToastState | null>(null);
   const [leftPaneWidth, setLeftPaneWidth] = useState<number>(DEFAULT_LEFT_PANE_WIDTH);
   const leftPaneWidthRef = useRef<number>(DEFAULT_LEFT_PANE_WIDTH);
@@ -339,6 +342,7 @@ export const PromptVaultClient = ({
     setIsCreating(false);
     setIsEditing(false);
     setFormState(toPromptInputState(prompt));
+    setActivePreviewTab("rendered");
     setPlaceholderValues({});
     setPlaceholderUndoValues({});
     setToast(null);
@@ -767,13 +771,16 @@ export const PromptVaultClient = ({
       </header>
 
       <div
-        className="h-[calc(100vh-56px)]"
+        className="h-[calc(100vh-56px)] min-h-0 overflow-hidden"
         style={{
           display: "grid",
           gridTemplateColumns: `${leftPaneWidth}px 8px 1fr`,
         }}
       >
-        <aside className="border-r" data-pv={PV_SELECTORS.leftPane}>
+        <aside
+          className="flex min-h-0 flex-col overflow-hidden border-r"
+          data-pv={PV_SELECTORS.leftPane}
+        >
           <div className="space-y-3 p-3">
             {!isDemo && (
               <Button
@@ -822,7 +829,7 @@ export const PromptVaultClient = ({
             </div>
           </div>
 
-          <ScrollArea className="h-[calc(100vh-56px-108px)] px-3 pb-3">
+          <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
             <div className="space-y-2">
               {filteredPrompts.map((prompt) => (
                 <div
@@ -883,7 +890,7 @@ export const PromptVaultClient = ({
           style={{ touchAction: "none" }}
         />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex flex-1 flex-col overflow-hidden p-6">
           {!isFormMode && !selectedPrompt ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               プロンプトを選択してください
@@ -891,7 +898,7 @@ export const PromptVaultClient = ({
           ) : null}
 
           {isFormMode ? (
-            <div className="mx-auto max-w-4xl space-y-4">
+            <div className="mx-auto min-h-0 w-full max-w-4xl overflow-y-auto space-y-4">
               <h2 className="text-xl font-bold">
                 {isCreating ? "新規プロンプト作成" : "プロンプト編集"}
               </h2>
@@ -979,30 +986,68 @@ export const PromptVaultClient = ({
           ) : null}
 
           {!isFormMode && selectedPrompt ? (
-            <div className="mx-auto max-w-4xl space-y-4">
+            <div className="flex min-h-0 flex-1 flex-col">
               {formError ? (
                 <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                   {formError}
                 </div>
               ) : null}
 
-              <div>
-                <h2 className="text-2xl font-bold" data-pv={PV_SELECTORS.selectedTitle}>
-                  {selectedPrompt.title}
-                </h2>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedPrompt.tags.map((tag) => (
-                    <Badge key={tag}>{tag}</Badge>
-                  ))}
+              <div className="space-y-2 border-b bg-background pb-3">
+                <div className="min-w-0">
+                  <h2 className="text-2xl font-bold" data-pv={PV_SELECTORS.selectedTitle}>
+                    {selectedPrompt.title}
+                  </h2>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPrompt.tags.map((tag) => (
+                      <Badge key={tag}>{tag}</Badge>
+                    ))}
+                  </div>
+                  {!isDemo ? (
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={startEdit}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        編集
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            削除
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              削除したプロンプトは復元できません。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel asChild>
+                              <Button variant="outline">キャンセル</Button>
+                            </AlertDialogCancel>
+                            <AlertDialogAction asChild>
+                              <Button
+                                variant="destructive"
+                                onClick={() => removePrompt(selectedPrompt.id)}
+                                disabled={isPending}
+                              >
+                                削除する
+                              </Button>
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
-              <ScrollArea className="max-h-64 rounded-md border bg-muted/30 p-4 whitespace-pre-wrap">
-                {selectedPrompt.body}
-              </ScrollArea>
-
-              {placeholders.length > 0 ? (
-                <div className="space-y-3 rounded-md border bg-muted/20 p-4">
+              <div className="grid min-h-0 flex-1 gap-4 pt-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                <section className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-muted/20 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Braces className="h-4 w-4 text-muted-foreground" />
@@ -1023,95 +1068,122 @@ export const PromptVaultClient = ({
                       </Button>
                     </div>
                   </div>
-                  <ScrollArea className="max-h-[800px] pr-3">
-                    <div className="space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        「{"{{...}}"}
-                        」ごとの値を入力すると、下の「レンダリング結果」に反映されます。
-                      </p>
-                      {placeholders.map((key) => renderPlaceholderField(key))}
+                  {placeholders.length > 0 ? (
+                    <ScrollArea className="min-h-0 flex-1 pr-3">
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          「{"{{...}}"}
+                          」ごとの値を入力すると、右のプレビューに反映されます。
+                        </p>
+                        {placeholders.map((key) => renderPlaceholderField(key))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
+                      このプロンプトにはプレースホルダがありません。
                     </div>
-                  </ScrollArea>
-                </div>
-              ) : null}
+                  )}
+                </section>
 
-              <div className="space-y-2 rounded-md border p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">レンダリング結果</h3>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={copyPlainText}
-                      title="プロンプト本文のみをコピーします"
-                      data-pv={PV_SELECTORS.copyBodyButton}
+                <section className="flex min-h-0 flex-col overflow-hidden rounded-md border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div
+                      className="inline-flex rounded-lg border bg-muted p-1.5 shadow-sm"
+                      role="tablist"
+                      aria-label="プレビュー切り替え"
                     >
-                      <Copy className="mr-2 h-4 w-4" />
-                      本文コピー
-                      <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                        ⌥C
-                      </kbd>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={copyMarkdownText}
-                      title="ログ/コードを ``` で囲ってコピーします"
-                      data-pv={PV_SELECTORS.copyMarkdownButton}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Markdown整形コピー
-                    </Button>
-                  </div>
-                </div>
-                <ScrollArea
-                  data-pv={PV_SELECTORS.renderedOutput}
-                  className="max-h-64 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
-                >
-                  {renderedBody}
-                </ScrollArea>
-              </div>
-
-              <Separator />
-
-              {!isDemo && (
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={startEdit}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    編集
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        削除
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activePreviewTab === "rendered"}
+                        aria-controls="preview-rendered-panel"
+                        id="preview-rendered-tab"
+                        className={cn(
+                          "rounded-md px-3 py-1.5 text-sm transition-all",
+                          activePreviewTab === "rendered"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
+                            : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
+                        )}
+                        onClick={() => setActivePreviewTab("rendered")}
+                      >
+                        レンダリング結果
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activePreviewTab === "original"}
+                        aria-controls="preview-original-panel"
+                        id="preview-original-tab"
+                        className={cn(
+                          "rounded-md px-3 py-1.5 text-sm transition-all",
+                          activePreviewTab === "original"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
+                            : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
+                        )}
+                        onClick={() => setActivePreviewTab("original")}
+                      >
+                        元の文章
+                      </button>
+                    </div>
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyPlainText}
+                        title="プロンプト本文のみをコピーします"
+                        data-pv={PV_SELECTORS.copyBodyButton}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        本文コピー
+                        <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
+                          ⌥C
+                        </kbd>
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          削除したプロンプトは復元できません。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel asChild>
-                          <Button variant="outline">キャンセル</Button>
-                        </AlertDialogCancel>
-                        <AlertDialogAction asChild>
-                          <Button
-                            variant="destructive"
-                            onClick={() => removePrompt(selectedPrompt.id)}
-                            disabled={isPending}
-                          >
-                            削除する
-                          </Button>
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyMarkdownText}
+                        title="ログ/コードを ``` で囲ってコピーします"
+                        data-pv={PV_SELECTORS.copyMarkdownButton}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        Markdown整形コピー
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    id="preview-rendered-panel"
+                    role="tabpanel"
+                    aria-labelledby="preview-rendered-tab"
+                    className={cn(
+                      "mt-3 min-h-0 flex-1 flex-col space-y-2",
+                      activePreviewTab === "rendered" ? "flex" : "hidden",
+                    )}
+                  >
+                    <ScrollArea
+                      data-pv={PV_SELECTORS.renderedOutput}
+                      className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
+                    >
+                      {renderedBody}
+                    </ScrollArea>
+                  </div>
+
+                  <div
+                    id="preview-original-panel"
+                    role="tabpanel"
+                    aria-labelledby="preview-original-tab"
+                    className={cn(
+                      "mt-3 min-h-0 flex-1 flex-col space-y-2",
+                      activePreviewTab === "original" ? "flex" : "hidden",
+                    )}
+                  >
+                    <ScrollArea className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
+                      {selectedPrompt.body}
+                    </ScrollArea>
+                  </div>
+                </section>
+              </div>
             </div>
           ) : null}
         </main>

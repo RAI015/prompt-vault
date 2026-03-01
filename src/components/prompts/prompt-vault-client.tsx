@@ -1023,10 +1023,14 @@ export const PromptVaultClient = ({
                       </Button>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    「{"{{...}}"}」ごとの値を入力すると、下の「レンダリング結果」に反映されます。
-                  </p>
-                  {placeholders.map((key) => renderPlaceholderField(key))}
+                  <ScrollArea className="max-h-[800px] pr-3">
+                    <div className="space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        「{"{{...}}"}」ごとの値を入力すると、下の「レンダリング結果」に反映されます。
+                      </p>
+                      {placeholders.map((key) => renderPlaceholderField(key))}
+                    </div>
+                  </ScrollArea>
                 </div>
               ) : null}
 

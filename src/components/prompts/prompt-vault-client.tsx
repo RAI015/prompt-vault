@@ -1044,8 +1044,8 @@ export const PromptVaultClient = ({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto pt-4">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                  <section className="space-y-3 rounded-md border bg-muted/20 p-4">
+                <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                  <section className="flex min-h-0 flex-col space-y-3 rounded-md border bg-muted/20 p-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <Braces className="h-4 w-4 text-muted-foreground" />
@@ -1067,7 +1067,7 @@ export const PromptVaultClient = ({
                       </div>
                     </div>
                     {placeholders.length > 0 ? (
-                      <ScrollArea className="max-h-[800px] pr-3">
+                      <ScrollArea className="min-h-0 flex-1 pr-3">
                         <div className="space-y-3">
                           <p className="text-xs text-muted-foreground">
                             「{"{{...}}"}
@@ -1083,7 +1083,7 @@ export const PromptVaultClient = ({
                     )}
                   </section>
 
-                  <section className="space-y-3 rounded-md border p-4">
+                  <section className="flex min-h-0 flex-col space-y-3 rounded-md border p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div
                         className="inline-flex rounded-lg border bg-muted p-1.5 shadow-sm"
@@ -1154,13 +1154,15 @@ export const PromptVaultClient = ({
                       id="preview-rendered-panel"
                       role="tabpanel"
                       aria-labelledby="preview-rendered-tab"
-                      hidden={activePreviewTab !== "rendered"}
-                      className="space-y-2"
+                      className={cn(
+                        "min-h-0 flex-1 flex-col space-y-2",
+                        activePreviewTab === "rendered" ? "flex" : "hidden",
+                      )}
                     >
                       <p className="text-sm font-medium">レンダリング結果</p>
                       <ScrollArea
                         data-pv={PV_SELECTORS.renderedOutput}
-                        className="max-h-[720px] min-h-[320px] whitespace-pre-wrap rounded-md bg-muted/30 p-3"
+                        className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
                       >
                         {renderedBody}
                       </ScrollArea>
@@ -1170,11 +1172,13 @@ export const PromptVaultClient = ({
                       id="preview-original-panel"
                       role="tabpanel"
                       aria-labelledby="preview-original-tab"
-                      hidden={activePreviewTab !== "original"}
-                      className="space-y-2"
+                      className={cn(
+                        "min-h-0 flex-1 flex-col space-y-2",
+                        activePreviewTab === "original" ? "flex" : "hidden",
+                      )}
                     >
                       <p className="text-sm font-medium">元の文章</p>
-                      <ScrollArea className="max-h-[720px] min-h-[320px] whitespace-pre-wrap rounded-md bg-muted/30 p-3">
+                      <ScrollArea className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
                         {selectedPrompt.body}
                       </ScrollArea>
                     </div>

@@ -792,15 +792,11 @@ export const PromptVaultClient = ({
                 新規作成
               </Button>
             )}
-                                  <div className="space-y-1">
-              <label htmlFor="prompt-search" 
-              className="text-xs font-medium text-muted-foreground">
-              
-              
+            <div className="space-y-1">
+              <label htmlFor="prompt-search" className="text-xs font-medium text-muted-foreground">
                 検索
               </label>
-              <div 
-              className="relative">
+              <div className="relative">
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="prompt-search"

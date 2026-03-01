@@ -771,13 +771,13 @@ export const PromptVaultClient = ({
       </header>
 
       <div
-        className="h-[calc(100vh-56px)]"
+        className="h-[calc(100vh-56px)] min-h-0 overflow-hidden"
         style={{
           display: "grid",
           gridTemplateColumns: `${leftPaneWidth}px 8px 1fr`,
         }}
       >
-        <aside className="border-r" data-pv={PV_SELECTORS.leftPane}>
+        <aside className="flex min-h-0 flex-col overflow-hidden border-r" data-pv={PV_SELECTORS.leftPane}>
           <div className="space-y-3 p-3">
             {!isDemo && (
               <Button
@@ -826,7 +826,7 @@ export const PromptVaultClient = ({
             </div>
           </div>
 
-          <ScrollArea className="h-[calc(100vh-56px-108px)] px-3 pb-3">
+          <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
             <div className="space-y-2">
               {filteredPrompts.map((prompt) => (
                 <div
@@ -1154,7 +1154,7 @@ export const PromptVaultClient = ({
                     role="tabpanel"
                     aria-labelledby="preview-rendered-tab"
                     className={cn(
-                      "min-h-0 flex-1 flex-col space-y-2 my-3",
+                      "mt-3 min-h-0 flex-1 flex-col space-y-2",
                       activePreviewTab === "rendered" ? "flex" : "hidden",
                     )}
                   >
@@ -1171,7 +1171,7 @@ export const PromptVaultClient = ({
                     role="tabpanel"
                     aria-labelledby="preview-original-tab"
                     className={cn(
-                      "min-h-0 flex-1 flex-col space-y-2 my-3",
+                      "mt-3 min-h-0 flex-1 flex-col space-y-2",
                       activePreviewTab === "original" ? "flex" : "hidden",
                     )}
                   >

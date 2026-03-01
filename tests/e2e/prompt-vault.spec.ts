@@ -149,6 +149,15 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("link", { name: "ログインして使う" })).toBeVisible();
 
     await expect(page.getByTestId(PV_SELECTORS.leftPane)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "プレースホルダ入力" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "レンダリング結果" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByRole("tab", { name: "元の文章" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
 
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
@@ -178,6 +187,21 @@ test.describe("Prompt Vault E2E", () => {
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(input).toHaveValue("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);
+
+    await page.getByRole("tab", { name: "元の文章" }).click();
+    await expect(page.getByRole("tab", { name: "元の文章" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const originalPanel = page.locator("#preview-original-panel");
+    await expect(originalPanel).toContainText("{{goal_text}}");
+    await expect(originalPanel).toContainText("{{error_logs}}");
+
+    await page.getByRole("tab", { name: "レンダリング結果" }).click();
+    await expect(page.getByRole("tab", { name: "レンダリング結果" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
 
     await page.reload();
     await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");

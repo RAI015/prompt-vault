@@ -37,7 +37,7 @@ import {
 } from "@/server/actions/prompt-actions";
 import { extractPlaceholders, renderTemplate } from "@/utils/placeholder";
 import type { Prompt } from "@prisma/client";
-import { Braces, Copy, Eraser, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
+import { Braces, Copy, Eraser, Pencil, Pin, Plus, Save, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
@@ -460,16 +460,13 @@ export const PromptVaultClient = ({
     resetFormErrors();
   };
 
-  const togglePin = () => {
+  const togglePin = (promptId: string) => {
     if (isDemo) return;
-    if (!selectedPrompt) {
-      return;
-    }
 
     setFormError("");
 
     startTransition(async () => {
-      const result = await togglePromptPinAction(selectedPrompt.id);
+      const result = await togglePromptPinAction(promptId);
       if (result.error) {
         setFormError(result.error.message);
         return;
@@ -828,25 +825,52 @@ export const PromptVaultClient = ({
           <ScrollArea className="h-[calc(100vh-56px-108px)] px-3 pb-3">
             <div className="space-y-2">
               {filteredPrompts.map((prompt) => (
-                <button
+                <div
                   key={prompt.id}
-                  type="button"
                   data-pv={PV_SELECTORS.searchResultItem}
-                  onClick={() => selectPrompt(prompt)}
-                  className={`w-full rounded-md p-2 text-left ${
-                    selectedPromptId === prompt.id && !isFormMode ? "bg-accent" : "hover:bg-muted"
+                  className={`w-full rounded-md border-l-2 p-2 text-left ${
+                    selectedPromptId === prompt.id && !isFormMode
+                      ? "border-transparent bg-accent"
+                      : prompt.pinnedAt
+                        ? "border-primary/40 bg-muted/30 hover:bg-muted"
+                        : "border-transparent hover:bg-muted"
                   }`}
                 >
-                  <div className="flex items-center gap-1">
-                    <p className="line-clamp-1 text-sm font-medium">{prompt.title}</p>
-                    {prompt.pinnedAt ? <Badge variant="secondary">PIN</Badge> : null}
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => selectPrompt(prompt)}
+                    >
+                      <p className="line-clamp-1 text-sm font-medium">{prompt.title}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {prompt.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag}>{tag}</Badge>
+                        ))}
+                      </div>
+                    </button>
+                    {!isDemo ? (
+                      <button
+                        type="button"
+                        data-pv={PV_SELECTORS.searchResultPinButton}
+                        className="rounded-sm p-1 text-muted-foreground hover:bg-accent"
+                        aria-label={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
+                        title={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          togglePin(prompt.id);
+                        }}
+                      >
+                        <Pin
+                          className={`h-4 w-4 ${
+                            prompt.pinnedAt ? "text-primary" : "text-muted-foreground"
+                          }`}
+                        />
+                      </button>
+                    ) : null}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {prompt.tags.slice(0, 3).map((tag) => (
-                      <Badge key={tag}>{tag}</Badge>
-                    ))}
-                  </div>
-                </button>
+                </div>
               ))}
             </div>
           </ScrollArea>
@@ -1047,14 +1071,6 @@ export const PromptVaultClient = ({
 
               {!isDemo && (
                 <div className="flex gap-2">
-                  <Button
-                    variant={"outline"}
-                    onClick={togglePin}
-                    disabled={isPending}
-                    data-pv={PV_SELECTORS.pinButton}
-                  >
-                    {selectedPrompt.pinnedAt ? "ピン解除" : "ピン留め"}
-                  </Button>
                   <Button variant="outline" onClick={startEdit}>
                     <Pencil className="mr-2 h-4 w-4" />
                     編集

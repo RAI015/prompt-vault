@@ -4,6 +4,7 @@ export const PV_SELECTORS = {
   createButton: "pv-create-button",
   searchInput: "pv-search-input",
   searchResultItem: "pv-search-result-item",
+  searchResultPinButton: "pv-search-result-pin-button",
   titleInput: "pv-title-input",
   bodyInput: "pv-body-input",
   tagsInput: "pv-tags-input",

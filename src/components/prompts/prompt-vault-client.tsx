@@ -777,7 +777,10 @@ export const PromptVaultClient = ({
           gridTemplateColumns: `${leftPaneWidth}px 8px 1fr`,
         }}
       >
-        <aside className="flex min-h-0 flex-col overflow-hidden border-r" data-pv={PV_SELECTORS.leftPane}>
+        <aside
+          className="flex min-h-0 flex-col overflow-hidden border-r"
+          data-pv={PV_SELECTORS.leftPane}
+        >
           <div className="space-y-3 p-3">
             {!isDemo && (
               <Button

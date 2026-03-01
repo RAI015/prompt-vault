@@ -51,20 +51,22 @@ CI（GitHub Actions）:
 
 `cleanup-ci-db` に必要な Secrets:
 
-- `CI_CLEANUP_DATABASE_URL`（CI用Supabase DBの接続URL）
+- `CI_DATABASE_URL`（CI用Supabase DBの接続URL）
 - `CI_DATABASE_PROJECT_REF`（CI用Supabaseのproject ref）
-- `CI_CLEANUP_ALLOW_EMAILS`（削除対象メール一覧。カンマ区切り）
+- `CI_CLEANUP_TARGET_EMAILS`（削除対象メール一覧。カンマ区切り）
 
 `e2e` に必要な Secrets（DB関連）:
 
-- `DATABASE_URL`
+- `CI_DATABASE_URL`
   - CI用Supabase DBの接続URLを設定する
   - `e2e.yml` では `pnpm prisma migrate deploy` と `pnpm test:e2e` の両方で使う
   - Supabase の `Connect > Session pooler` で表示される `aws-...pooler.supabase.com:5432` の接続文字列を使う
   - `sslmode=require` を付ける
-- `CI_CLEANUP_DATABASE_URL`
+- `CI_ALLOW_EMAILS`
+  - E2E ログインを許可するメール一覧
+- `CI_CLEANUP_TARGET_EMAILS`
   - cleanup workflow 専用
-  - `e2e.yml` では使わない
+  - `cleanup-ci-db.yml` で削除対象にするメール一覧
 
 ## セキュリティと制約
 

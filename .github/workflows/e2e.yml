@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      ALLOW_EMAILS: ${{ secrets.ALLOW_EMAILS }}
+      ALLOW_EMAILS: ${{ secrets.CI_ALLOW_EMAILS }}
       TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
     steps:

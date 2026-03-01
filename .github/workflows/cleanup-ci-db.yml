@@ -13,16 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      DATABASE_URL: ${{ secrets.CI_CLEANUP_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       CI_DATABASE_PROJECT_REF: ${{ secrets.CI_DATABASE_PROJECT_REF }}
-      ALLOW_EMAILS: ${{ secrets.CI_CLEANUP_ALLOW_EMAILS }}
+      TARGET_EMAILS: ${{ secrets.CI_CLEANUP_TARGET_EMAILS }}
     steps:
       - uses: actions/checkout@v4
       - name: Check required secrets
         run: |
-          test -n "${DATABASE_URL}" || { echo "CI_CLEANUP_DATABASE_URL is required"; exit 1; }
+          test -n "${DATABASE_URL}" || { echo "CI_DATABASE_URL is required"; exit 1; }
           test -n "${CI_DATABASE_PROJECT_REF}" || { echo "CI_DATABASE_PROJECT_REF is required"; exit 1; }
-          test -n "${ALLOW_EMAILS}" || { echo "CI_CLEANUP_ALLOW_EMAILS is required"; exit 1; }
+          test -n "${TARGET_EMAILS}" || { echo "CI_CLEANUP_TARGET_EMAILS is required"; exit 1; }
       - name: Guard target database
         run: |
           echo "${DATABASE_URL}" | grep -q "${CI_DATABASE_PROJECT_REF}" || {
@@ -41,7 +41,7 @@ jobs:
       - name: Cleanup test data
         run: |
           EMAILS_SQL=$(
-            echo "${ALLOW_EMAILS}" \
+            echo "${TARGET_EMAILS}" \
               | tr ',' '\n' \
               | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
               | sed '/^$/d' \

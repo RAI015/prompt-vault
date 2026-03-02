@@ -336,7 +336,7 @@ export const PromptVaultClient = ({
     const nodes: ReactNode[] = [];
     let lastIndex = 0;
 
-    for (const match of previewBody.matchAll(new RegExp(PLACEHOLDER_REGEX))) {
+    for (const match of previewBody.matchAll(PLACEHOLDER_REGEX)) {
       const [token, key] = match;
       const index = match.index ?? 0;
 

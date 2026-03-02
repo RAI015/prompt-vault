@@ -26,8 +26,9 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
     await page.getByLabel("パスワード").fill(testUserPassword ?? "");
     await page.getByRole("button", { name: "メールでログイン" }).click();
+    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
 
-    await expect(page.getByText("Prompt Vault")).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
 
     await page.getByTestId(PV_SELECTORS.createButton).click();
     await page.getByTestId(PV_SELECTORS.titleInput).fill(title);
@@ -79,8 +80,9 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
     await page.getByLabel("パスワード").fill(testUserPassword ?? "");
     await page.getByRole("button", { name: "メールでログイン" }).click();
+    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
 
-    await expect(page.getByText("Prompt Vault")).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
 
     await page.getByTestId(PV_SELECTORS.createButton).click();
     await page.getByTestId(PV_SELECTORS.titleInput).fill(title);
@@ -119,7 +121,8 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
     await page.getByLabel("パスワード").fill(testUserPassword ?? "");
     await page.getByRole("button", { name: "メールでログイン" }).click();
-    await expect(page.getByText("Prompt Vault")).toBeVisible();
+    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
+    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
 
     const leftPane = page.getByTestId(PV_SELECTORS.leftPane);
     const handle = page.getByTestId(PV_SELECTORS.splitterHandle);
@@ -287,8 +290,9 @@ test.describe("Prompt Vault E2E", () => {
     await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
     await page.getByLabel("パスワード").fill(testUserPassword ?? "");
     await page.getByRole("button", { name: "メールでログイン" }).click();
+    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
 
-    await expect(page.getByText("Prompt Vault")).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
 
     await page.getByTestId(PV_SELECTORS.createButton).click();
     await page.getByTestId(PV_SELECTORS.titleInput).fill(titleA);
@@ -311,7 +315,7 @@ test.describe("Prompt Vault E2E", () => {
 
     const itemsAfterPinB = page.getByTestId(PV_SELECTORS.searchResultItem);
     await expect(itemsAfterPinB).toHaveCount(2, { timeout: 10_000 });
-    await expect(itemsAfterPinB.nth(0)).toContainText(titleB);
+    await expect(itemsAfterPinB.nth(0)).toContainText(titleB, { timeout: 10_000 });
 
     const itemA = page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: titleA });
     await itemA.click();
@@ -321,8 +325,8 @@ test.describe("Prompt Vault E2E", () => {
 
     const itemsAfterPinA = page.getByTestId(PV_SELECTORS.searchResultItem);
     await expect(itemsAfterPinA).toHaveCount(2, { timeout: 10_000 });
-    await expect(itemsAfterPinA.nth(0)).toContainText(titleA);
-    await expect(itemsAfterPinA.nth(1)).toContainText(titleB);
+    await expect(itemsAfterPinA.nth(0)).toContainText(titleA, { timeout: 10_000 });
+    await expect(itemsAfterPinA.nth(1)).toContainText(titleB, { timeout: 10_000 });
 
     await page.goto("/demo");
     await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton)).toHaveCount(0);

@@ -37,12 +37,20 @@ import {
   togglePromptPinAction,
   updatePromptAction,
 } from "@/server/actions/prompt-actions";
-import { extractPlaceholders, renderTemplate } from "@/utils/placeholder";
+import { PLACEHOLDER_REGEX, extractPlaceholders, renderTemplate } from "@/utils/placeholder";
 import type { Prompt } from "@prisma/client";
 import { Braces, Copy, Eraser, Pencil, Pin, Plus, Save, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 
@@ -151,6 +159,7 @@ export const PromptVaultClient = ({
   );
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
+  const [activePlaceholderKey, setActivePlaceholderKey] = useState<string | null>(null);
   const [activePreviewTab, setActivePreviewTab] = useState<PreviewTab>("rendered");
   const [toast, setToast] = useState<ToastState | null>(null);
   const [leftPaneWidth, setLeftPaneWidth] = useState<number>(DEFAULT_LEFT_PANE_WIDTH);
@@ -320,8 +329,49 @@ export const PromptVaultClient = ({
     });
   }, [prompts, search]);
 
-  const placeholders = extractPlaceholders(selectedPrompt?.body ?? formState.body);
-  const renderedBody = renderTemplate(selectedPrompt?.body ?? formState.body, placeholderValues);
+  const previewBody = selectedPrompt?.body ?? formState.body;
+  const placeholders = extractPlaceholders(previewBody);
+  const renderedBody = renderTemplate(previewBody, placeholderValues);
+  const renderedPreviewNodes = useMemo(() => {
+    const nodes: ReactNode[] = [];
+    let lastIndex = 0;
+
+    for (const match of previewBody.matchAll(PLACEHOLDER_REGEX)) {
+      const [token, key] = match;
+      const index = match.index ?? 0;
+
+      if (index > lastIndex) {
+        nodes.push(previewBody.slice(lastIndex, index));
+      }
+
+      const value = placeholderValues[key] ?? "";
+      if (value === "") {
+        nodes.push(
+          <span
+            key={`${key}-${index}`}
+            className={cn(
+              "text-muted-foreground/50",
+              activePlaceholderKey === key
+                ? "rounded-sm bg-emerald-500/15 ring-1 ring-emerald-500/55"
+                : null,
+            )}
+          >
+            {token}
+          </span>,
+        );
+      } else {
+        nodes.push(value);
+      }
+
+      lastIndex = index + token.length;
+    }
+
+    if (lastIndex < previewBody.length) {
+      nodes.push(previewBody.slice(lastIndex));
+    }
+
+    return nodes;
+  }, [activePlaceholderKey, placeholderValues, previewBody]);
 
   const resetFormErrors = () => {
     setFormError("");
@@ -333,6 +383,7 @@ export const PromptVaultClient = ({
     setIsCreating(true);
     setIsEditing(false);
     setSelectedPromptId(null);
+    setActivePlaceholderKey(null);
     setFormState(toPromptInputState());
     setPlaceholderValues({});
     setPlaceholderUndoValues({});
@@ -344,6 +395,7 @@ export const PromptVaultClient = ({
     setSelectedPromptId(prompt.id);
     setIsCreating(false);
     setIsEditing(false);
+    setActivePlaceholderKey(null);
     setFormState(toPromptInputState(prompt));
     setActivePreviewTab("rendered");
     setPlaceholderValues({});
@@ -649,6 +701,8 @@ export const PromptVaultClient = ({
               className="resize-y font-mono"
               placeholder={placeholderText}
               value={placeholderValues[key] ?? ""}
+              onFocus={() => setActivePlaceholderKey(key)}
+              onBlur={() => setActivePlaceholderKey(null)}
               onChange={(event) =>
                 setPlaceholderValues((prev) => ({
                   ...prev,
@@ -739,6 +793,8 @@ export const PromptVaultClient = ({
             data-pv={getPlaceholderInputSelector(key)}
             placeholder={placeholderText}
             value={placeholderValues[key] ?? ""}
+            onFocus={() => setActivePlaceholderKey(key)}
+            onBlur={() => setActivePlaceholderKey(null)}
             onChange={(event) =>
               setPlaceholderValues((prev) => ({
                 ...prev,
@@ -1178,7 +1234,7 @@ export const PromptVaultClient = ({
                       data-pv={PV_SELECTORS.renderedOutput}
                       className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
                     >
-                      {renderedBody}
+                      {renderedPreviewNodes}
                     </ScrollArea>
                   </div>
 

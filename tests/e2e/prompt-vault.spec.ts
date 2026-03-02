@@ -190,6 +190,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.clearPlaceholdersButton)).toHaveCount(1);
     await expect(renderedPanel).toBeVisible();
     await expect(originalPanel).toBeHidden();
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("{{goal_text}}");
 
     const initialPreviewScrollTop = await originalScrollArea.evaluate(
       (element) => element.scrollTop,
@@ -234,6 +235,7 @@ test.describe("Prompt Vault E2E", () => {
     await input.fill("E2Eデモ入力");
     await fillExampleButton.click();
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("{{goal_text}}");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(input).toHaveValue("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);

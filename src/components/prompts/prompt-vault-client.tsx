@@ -42,7 +42,15 @@ import type { Prompt } from "@prisma/client";
 import { Braces, Copy, Eraser, Pencil, Pin, Plus, Save, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 
@@ -343,7 +351,9 @@ export const PromptVaultClient = ({
             key={`${key}-${index}`}
             className={cn(
               "text-muted-foreground/50",
-              activePlaceholderKey === key ? "rounded-sm bg-emerald-500/10 ring-1 ring-emerald-500/40" : null,
+              activePlaceholderKey === key
+                ? "rounded-sm bg-emerald-500/10 ring-1 ring-emerald-500/40"
+                : null,
             )}
           >
             {token}

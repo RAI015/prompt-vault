@@ -1069,17 +1069,18 @@ export const PromptVaultClient = ({
                     </div>
                   </div>
                   {placeholders.length > 0 ? (
-                    <ScrollArea className="min-h-0 flex-1 pr-3">
-                      <div className="space-y-3">
-                        <p className="text-xs text-muted-foreground">
-                          「{"{{...}}"}
-                          」ごとの値を入力すると、右のプレビューに反映されます。
-                        </p>
-                        {placeholders.map((key) => renderPlaceholderField(key))}
-                      </div>
-                    </ScrollArea>
+                    <>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        「{"{{...}}"}」ごとの値を入力すると、右のプレビューに反映されます。
+                      </p>
+                      <ScrollArea className="mt-3 min-h-0 flex-1 pr-3">
+                        <div className="space-y-3">
+                          {placeholders.map((key) => renderPlaceholderField(key))}
+                        </div>
+                      </ScrollArea>
+                    </>
                   ) : (
-                    <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
+                    <div className="mt-3 rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
                       このプロンプトにはプレースホルダがありません。
                     </div>
                   )}

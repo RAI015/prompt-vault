@@ -352,7 +352,7 @@ export const PromptVaultClient = ({
             className={cn(
               "text-muted-foreground/50",
               activePlaceholderKey === key
-                ? "rounded-sm bg-emerald-500/10 ring-1 ring-emerald-500/40"
+                ? "rounded-sm bg-emerald-500/15 ring-1 ring-emerald-500/55"
                 : null,
             )}
           >

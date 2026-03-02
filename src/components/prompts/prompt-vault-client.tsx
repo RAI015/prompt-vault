@@ -1,5 +1,6 @@
 "use client";
 
+import iconSrc from "@/app/icon.png";
 import { getPlaceholderFieldSchema } from "@/components/prompts/placeholder-field-schema";
 import {
   AlertDialog,
@@ -39,9 +40,8 @@ import {
 import { extractPlaceholders, renderTemplate } from "@/utils/placeholder";
 import type { Prompt } from "@prisma/client";
 import { Braces, Copy, Eraser, Pencil, Pin, Plus, Save, Search, Trash2 } from "lucide-react";
-import iconSrc from "@/app/icon.png";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -131,6 +131,7 @@ export const PromptVaultClient = ({
   mode?: PromptVaultMode;
 }) => {
   const isDemo = mode === "demo";
+  const homeHref = isDemo ? "/demo" : "/app/prompts";
   const placeholderValuesStorageKey = `${PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX}${mode}`;
 
   const [prompts, setPrompts] = useState<PromptLike[]>(initialPrompts);
@@ -753,7 +754,7 @@ export const PromptVaultClient = ({
   return (
     <div className="h-screen overflow-hidden">
       <header className="flex h-14 items-center justify-between border-b px-4">
-        <div className="flex items-center gap-2 font-semibold">
+        <Link href={homeHref} className="flex items-center gap-2 font-semibold">
           <Image
             src={iconSrc}
             alt=""
@@ -762,7 +763,7 @@ export const PromptVaultClient = ({
             className="rounded-sm border-[0.5px] border-white/50"
           />
           <span>Prompt Vault</span>
-        </div>
+        </Link>
         {isDemo && (
           <span className="rounded-md border px-2 py-0.5 text-muted-foreground">
             DEMO（閲覧のみ）

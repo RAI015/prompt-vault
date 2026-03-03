@@ -190,26 +190,18 @@ test.describe("Prompt Vault E2E", () => {
 
     await expect(page.getByTestId(PV_SELECTORS.leftPane)).toBeVisible();
     await expect(page.getByRole("heading", { name: "プレースホルダ入力" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "レンダリング結果" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await expect(page.getByRole("tab", { name: "元の文章" })).toHaveAttribute(
-      "aria-selected",
-      "false",
-    );
+    await expect(page.getByText("レンダリング結果")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "元の文章" })).toHaveCount(0);
 
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
     const errorLogsInput = page.getByTestId(getPlaceholderInputSelector("error_logs"));
     const fillExampleButton = page.getByTestId(PV_SELECTORS.fillPlaceholderExamplesButton);
-    const placeholderSection = page.locator("section", {
-      has: page.getByRole("heading", { name: "プレースホルダ入力" }),
-    });
-    const placeholderScrollArea = placeholderSection.locator("div.overflow-auto").first();
+    const placeholderScrollArea = page
+      .getByTestId(PV_SELECTORS.placeholderPane)
+      .locator("div.overflow-auto")
+      .first();
     const renderedPanel = page.locator("#preview-rendered-panel");
-    const originalPanel = page.locator("#preview-original-panel");
-    const originalScrollArea = originalPanel.locator("div.overflow-auto").first();
     const errorLogsExample = [
       "PrismaClientInitializationError: Can't reach database server at `db.example.supabase.co:5432`",
       "",
@@ -228,59 +220,18 @@ test.describe("Prompt Vault E2E", () => {
     await expect(fillExampleButton).toBeVisible();
     await expect(page.getByTestId(PV_SELECTORS.clearPlaceholdersButton)).toHaveCount(1);
     await expect(renderedPanel).toBeVisible();
-    await expect(originalPanel).toBeHidden();
     await expect(page.getByTestId(PV_SELECTORS.copyBodyButton)).toBeVisible();
     await expect(page.getByTestId(PV_SELECTORS.copyMenuButton)).toBeVisible();
     await page.getByTestId(PV_SELECTORS.copyMenuButton).click();
     await expect(page.getByTestId(PV_SELECTORS.copyMarkdownButton)).toBeVisible();
     await expect(page.getByTestId(PV_SELECTORS.copyOriginalButton)).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("{{goal_text}}");
-
-    const initialPreviewScrollTop = await originalScrollArea.evaluate(
-      (element) => element.scrollTop,
-    );
     const placeholderScrollTop = await placeholderScrollArea.evaluate((element) => {
       element.scrollTop = 120;
       return element.scrollTop;
     });
     expect(placeholderScrollTop).toBeGreaterThan(0);
-    await expect(page.getByRole("tab", { name: "レンダリング結果" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await expect(page.getByRole("tab", { name: "元の文章" })).toHaveAttribute(
-      "aria-selected",
-      "false",
-    );
-    const previewScrollTopAfterLeftScroll = await originalScrollArea.evaluate(
-      (element) => element.scrollTop,
-    );
-    expect(previewScrollTopAfterLeftScroll).toBe(initialPreviewScrollTop);
-
-    await page.getByRole("tab", { name: "元の文章" }).click();
-    await expect(renderedPanel).toBeHidden();
-    await expect(originalPanel).toBeVisible();
-    await expect(page.getByTestId(PV_SELECTORS.copyBodyButton)).toHaveCount(0);
-    await expect(page.getByTestId(PV_SELECTORS.copyMenuButton)).toHaveCount(0);
-    await expect(page.getByTestId(PV_SELECTORS.copyMarkdownButton)).toHaveCount(0);
-    await expect(page.getByTestId(PV_SELECTORS.copyOriginalButton)).toHaveCount(0);
-    const leftScrollTopBeforePreviewScroll = await placeholderScrollArea.evaluate(
-      (element) => element.scrollTop,
-    );
-    const previewScrollTop = await originalScrollArea.evaluate((element) => {
-      element.scrollTop = 120;
-      return element.scrollTop;
-    });
-    expect(previewScrollTop).toBeGreaterThan(0);
-    const leftScrollTopAfterPreviewScroll = await placeholderScrollArea.evaluate(
-      (element) => element.scrollTop,
-    );
-    expect(leftScrollTopAfterPreviewScroll).toBe(leftScrollTopBeforePreviewScroll);
-    await page.getByRole("tab", { name: "レンダリング結果" }).click();
-    await expect(renderedPanel).toBeVisible();
-    await expect(originalPanel).toBeHidden();
-    await expect(page.getByTestId(PV_SELECTORS.copyBodyButton)).toBeVisible();
-    await expect(page.getByTestId(PV_SELECTORS.copyMenuButton)).toBeVisible();
 
     await input.fill("E2Eデモ入力");
     await fillExampleButton.click();
@@ -289,20 +240,6 @@ test.describe("Prompt Vault E2E", () => {
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(input).toHaveValue("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);
-
-    await page.getByRole("tab", { name: "元の文章" }).click();
-    await expect(page.getByRole("tab", { name: "元の文章" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await expect(originalPanel).toContainText("{{goal_text}}");
-    await expect(originalPanel).toContainText("{{error_logs}}");
-
-    await page.getByRole("tab", { name: "レンダリング結果" }).click();
-    await expect(page.getByRole("tab", { name: "レンダリング結果" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
 
     await page.reload();
     await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");

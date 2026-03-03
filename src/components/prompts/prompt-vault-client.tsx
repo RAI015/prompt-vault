@@ -80,6 +80,7 @@ const LOG_TRIM_LINE_COUNT = 50;
 const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
 const PLACEHOLDER_PANE_WIDTH_KEY = "pv:placeholderPaneWidthPx";
 const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
+const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
 const MAX_LEFT_PANE_WIDTH = 520;
@@ -135,6 +136,35 @@ type ToastState = {
 type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
 type PromptVaultMode = "app" | "demo";
 type PreviewTab = "rendered" | "original";
+
+const sortPromptsByPinnedAt = (
+  prompts: PromptLike[],
+  orderMap: Map<string, number>,
+): PromptLike[] => {
+  return [...prompts].sort((left, right) => {
+    if (left.pinnedAt && right.pinnedAt) {
+      const pinnedAtDiff = left.pinnedAt.getTime() - right.pinnedAt.getTime();
+      if (pinnedAtDiff !== 0) {
+        return pinnedAtDiff;
+      }
+      return (
+        (orderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+      );
+    }
+    if (left.pinnedAt) {
+      return -1;
+    }
+    if (right.pinnedAt) {
+      return 1;
+    }
+
+    return (
+      (orderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+      (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
+};
 
 const useResizablePane = ({
   storageKey,
@@ -284,6 +314,10 @@ export const PromptVaultClient = ({
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
+  const promptOrderMap = useMemo(
+    () => new Map(initialPrompts.map((prompt, index) => [prompt.id, index])),
+    [initialPrompts],
+  );
   const { width: leftPaneWidth, onPointerDown: onSplitterPointerDown } = useResizablePane({
     storageKey: LEFT_PANE_WIDTH_KEY,
     defaultWidth: DEFAULT_LEFT_PANE_WIDTH,
@@ -301,6 +335,39 @@ export const PromptVaultClient = ({
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!isDemo) {
+      return;
+    }
+
+    const raw = localStorage.getItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
+    if (!raw) {
+      setPrompts(sortPromptsByPinnedAt(initialPrompts, promptOrderMap));
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
+        setPrompts(sortPromptsByPinnedAt(initialPrompts, promptOrderMap));
+        return;
+      }
+
+      const pinnedIds = new Set(
+        parsed.filter((value): value is string => typeof value === "string"),
+      );
+      const nextPrompts = initialPrompts.map((prompt) => ({
+        ...prompt,
+        pinnedAt: pinnedIds.has(prompt.id) ? new Date(0) : null,
+      }));
+      setPrompts(sortPromptsByPinnedAt(nextPrompts, promptOrderMap));
+    } catch {
+      localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
+      setPrompts(sortPromptsByPinnedAt(initialPrompts, promptOrderMap));
+    }
+  }, [initialPrompts, isDemo, promptOrderMap]);
 
   useEffect(() => {
     const raw = localStorage.getItem(placeholderValuesStorageKey);
@@ -566,7 +633,31 @@ export const PromptVaultClient = ({
   };
 
   const togglePin = (promptId: string) => {
-    if (isDemo) return;
+    if (isDemo) {
+      setPrompts((prev) => {
+        const nextPrompts = prev.map((prompt) =>
+          prompt.id === promptId
+            ? {
+                ...prompt,
+                pinnedAt: prompt.pinnedAt ? null : new Date(0),
+              }
+            : prompt,
+        );
+
+        const pinnedPromptIds = nextPrompts
+          .filter((prompt) => prompt.pinnedAt !== null)
+          .map((prompt) => prompt.id);
+
+        if (pinnedPromptIds.length === 0) {
+          localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
+        } else {
+          localStorage.setItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY, JSON.stringify(pinnedPromptIds));
+        }
+
+        return sortPromptsByPinnedAt(nextPrompts, promptOrderMap);
+      });
+      return;
+    }
 
     setFormError("");
 
@@ -967,26 +1058,24 @@ export const PromptVaultClient = ({
                         ))}
                       </div>
                     </button>
-                    {!isDemo ? (
-                      <button
-                        type="button"
-                        data-pv={PV_SELECTORS.searchResultPinButton}
-                        className="rounded-sm p-1 text-muted-foreground hover:bg-accent"
-                        aria-label={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
-                        title={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          togglePin(prompt.id);
-                        }}
-                      >
-                        <Pin
-                          className={`h-4 w-4 ${
-                            prompt.pinnedAt ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        />
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      data-pv={PV_SELECTORS.searchResultPinButton}
+                      className="rounded-sm p-1 text-muted-foreground hover:bg-accent"
+                      aria-label={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
+                      title={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        togglePin(prompt.id);
+                      }}
+                    >
+                      <Pin
+                        className={`h-4 w-4 ${
+                          prompt.pinnedAt ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
               ))}

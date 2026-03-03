@@ -1343,31 +1343,33 @@ export const PromptVaultClient = ({
                         元の文章
                       </button>
                     </div>
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyPlainText}
-                        title="プロンプト本文のみをコピーします"
-                        data-pv={PV_SELECTORS.copyBodyButton}
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        本文コピー
-                        <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                          ⌥C
-                        </kbd>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyMarkdownText}
-                        title="ログ/コードを ``` で囲ってコピーします"
-                        data-pv={PV_SELECTORS.copyMarkdownButton}
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Markdown整形コピー
-                      </Button>
-                    </div>
+                    {activePreviewTab === "rendered" && (
+                      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyPlainText}
+                          title="プロンプト本文のみをコピーします"
+                          data-pv={PV_SELECTORS.copyBodyButton}
+                        >
+                          <Copy className="mr-2 h-4 w-4" />
+                          本文コピー
+                          <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
+                            ⌥C
+                          </kbd>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyMarkdownText}
+                          title="ログ/コードを ``` で囲ってコピーします"
+                          data-pv={PV_SELECTORS.copyMarkdownButton}
+                        >
+                          <Copy className="mr-2 h-4 w-4" />
+                          Markdown整形コピー
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div

@@ -143,7 +143,10 @@ const sortPromptsByPinnedAt = (
 ): PromptLike[] => {
   return [...prompts].sort((left, right) => {
     if (left.pinnedAt && right.pinnedAt) {
-      return left.pinnedAt.getTime() - right.pinnedAt.getTime();
+      const pinnedAtDiff = left.pinnedAt.getTime() - right.pinnedAt.getTime();
+      if (pinnedAtDiff !== 0) {
+        return pinnedAtDiff;
+      }
     }
     if (left.pinnedAt) {
       return -1;

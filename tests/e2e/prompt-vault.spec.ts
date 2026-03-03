@@ -378,6 +378,13 @@ test.describe("Prompt Vault E2E", () => {
     await demoItems.nth(0).getByTestId(PV_SELECTORS.searchResultPinButton).click();
     await expect(demoItems.nth(0)).not.toContainText(demoPinnedTitle ?? "");
 
+    const demoSixthTitle = await demoItems.nth(5).textContent();
+    const demoSecondTitle = await demoItems.nth(1).textContent();
+    await demoItems.nth(5).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await demoItems.nth(2).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await expect(demoItems.nth(0)).toContainText(demoSecondTitle ?? "");
+    await expect(demoItems.nth(1)).toContainText(demoSixthTitle ?? "");
+
     await page.reload();
     await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
   });

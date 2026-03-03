@@ -1158,7 +1158,7 @@ export const PromptVaultClient = ({
               </div>
 
               <div
-                className="grid min-h-0 flex-1 gap-0 pt-2 xl:grid-cols-[var(--pv-placeholder-pane-width)_2px_minmax(0,1fr)]"
+                className="grid min-h-0 flex-1 gap-0 pt-2 xl:grid-cols-[var(--pv-placeholder-pane-width,360px)_2px_minmax(0,1fr)]"
                 style={previewPaneLayoutStyle}
               >
                 <section

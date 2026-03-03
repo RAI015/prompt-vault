@@ -145,6 +145,42 @@ test.describe("Prompt Vault E2E", () => {
     expect(after.width).toBeGreaterThan(before.width);
   });
 
+  test("プレースホルダ入力とレンダリング結果の幅をドラッグで変更できる", async ({ page }) => {
+    await page.goto("/demo");
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const placeholderPane = page.getByTestId(PV_SELECTORS.placeholderPane);
+    const previewPane = page.getByTestId(PV_SELECTORS.previewPane);
+    const handle = page.getByTestId(PV_SELECTORS.previewSplitterHandle);
+
+    await expect(placeholderPane).toBeVisible();
+    await expect(previewPane).toBeVisible();
+    await expect(handle).toBeVisible();
+
+    const placeholderBefore = await placeholderPane.boundingBox();
+    if (!placeholderBefore) throw new Error("placeholderPane boundingBox is null");
+
+    const previewBefore = await previewPane.boundingBox();
+    if (!previewBefore) throw new Error("previewPane boundingBox is null");
+
+    const handleBox = await handle.boundingBox();
+    if (!handleBox) throw new Error("previewSplitterHandle boundingBox is null");
+
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x + 120, handleBox.y + handleBox.height / 2);
+    await page.mouse.up();
+
+    const placeholderAfter = await placeholderPane.boundingBox();
+    if (!placeholderAfter) throw new Error("placeholderPane boundingBox is null");
+
+    const previewAfter = await previewPane.boundingBox();
+    if (!previewAfter) throw new Error("previewPane boundingBox is null");
+
+    expect(placeholderAfter.width).toBeGreaterThan(placeholderBefore.width);
+    expect(previewAfter.width).toBeLessThan(previewBefore.width);
+  });
+
   test("DEMO: 閲覧できて、置換が反映され、禁止操作が表示されない", async ({ page }) => {
     await page.goto("/demo");
     await page.setViewportSize({ width: 1280, height: 620 });

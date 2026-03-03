@@ -18,7 +18,10 @@ export const PV_SELECTORS = {
   renderedOutput: "pv-rendered-output",
   toastSuccess: "pv-toast-success",
   splitterHandle: "pv-splitter-handle",
+  previewSplitterHandle: "pv-preview-splitter-handle",
   leftPane: "pv-left-pane",
+  placeholderPane: "pv-placeholder-pane",
+  previewPane: "pv-preview-pane",
 } as const;
 
 export const getPlaceholderInputSelector = (key: string): string => {

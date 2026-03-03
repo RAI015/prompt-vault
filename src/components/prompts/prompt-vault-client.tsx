@@ -309,9 +309,11 @@ export const PromptVaultClient = ({
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [activePlaceholderKey, setActivePlaceholderKey] = useState<string | null>(null);
   const [activePreviewTab, setActivePreviewTab] = useState<PreviewTab>("rendered");
+  const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const copyMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const promptOrderMap = useMemo(
@@ -511,6 +513,7 @@ export const PromptVaultClient = ({
     setActivePlaceholderKey(null);
     setFormState(toPromptInputState(prompt));
     setActivePreviewTab("rendered");
+    setIsCopyMenuOpen(false);
     setPlaceholderValues({});
     setPlaceholderUndoValues({});
     setToast(null);
@@ -709,6 +712,45 @@ export const PromptVaultClient = ({
       showToast("Markdown整形コピーに失敗しました", "error");
     }
   }, [renderedBody, showToast]);
+
+  const copyOriginalText = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(selectedPrompt?.body ?? "");
+      showToast("原文をコピーしました", "success");
+    } catch {
+      showToast("原文コピーに失敗しました", "error");
+    } finally {
+      setIsCopyMenuOpen(false);
+    }
+  }, [selectedPrompt, showToast]);
+
+  useEffect(() => {
+    if (activePreviewTab !== "rendered" && isCopyMenuOpen) {
+      setIsCopyMenuOpen(false);
+    }
+  }, [activePreviewTab, isCopyMenuOpen]);
+
+  useEffect(() => {
+    if (!isCopyMenuOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!copyMenuRef.current) {
+        return;
+      }
+      if (copyMenuRef.current.contains(event.target as Node)) {
+        return;
+      }
+
+      setIsCopyMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [isCopyMenuOpen]);
 
   const clearPlaceholderValues = useCallback(() => {
     setPlaceholderValues({});
@@ -1358,16 +1400,49 @@ export const PromptVaultClient = ({
                             ⌥C
                           </kbd>
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={copyMarkdownText}
-                          title="ログ/コードを ``` で囲ってコピーします"
-                          data-pv={PV_SELECTORS.copyMarkdownButton}
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          Markdown整形コピー
-                        </Button>
+                        <div ref={copyMenuRef} className="relative">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            aria-haspopup="menu"
+                            aria-expanded={isCopyMenuOpen}
+                            onClick={() => setIsCopyMenuOpen((prev) => !prev)}
+                            data-pv={PV_SELECTORS.copyMenuButton}
+                          >
+                            …
+                          </Button>
+                          {isCopyMenuOpen && (
+                            <div
+                              className="absolute right-0 top-full z-10 mt-2 min-w-48 rounded-md border bg-popover p-1 shadow-md"
+                              role="menu"
+                            >
+                              <button
+                                type="button"
+                                className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                                onClick={() => {
+                                  void copyMarkdownText();
+                                  setIsCopyMenuOpen(false);
+                                }}
+                                data-pv={PV_SELECTORS.copyMarkdownButton}
+                                role="menuitem"
+                              >
+                                Markdown整形コピー
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                                onClick={() => {
+                                  void copyOriginalText();
+                                }}
+                                data-pv={PV_SELECTORS.copyOriginalButton}
+                                role="menuitem"
+                              >
+                                原文（テンプレ）コピー
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

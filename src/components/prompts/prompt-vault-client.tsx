@@ -147,6 +147,10 @@ const sortPromptsByPinnedAt = (
       if (pinnedAtDiff !== 0) {
         return pinnedAtDiff;
       }
+      return (
+        (orderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+      );
     }
     if (left.pinnedAt) {
       return -1;

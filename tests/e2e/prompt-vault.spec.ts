@@ -316,7 +316,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
   });
 
-  test("pin したプロンプトが先頭に並び、demo では pin ボタンが表示されない", async ({ page }) => {
+  test("pin したプロンプトが先頭に並び、demo でも pin を切り替えられる", async ({ page }) => {
     const unique = Date.now();
     const titleA = `Pin A ${unique}`;
     const titleB = `Pin B ${unique}`;
@@ -365,6 +365,20 @@ test.describe("Prompt Vault E2E", () => {
     await expect(itemsAfterPinA.nth(1)).toContainText(titleB, { timeout: 10_000 });
 
     await page.goto("/demo");
-    await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton)).toHaveCount(0);
+
+    const demoItems = page.getByTestId(PV_SELECTORS.searchResultItem);
+    await expect(demoItems).toHaveCount(6);
+    await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
+
+    const demoFirstTitleBefore = await demoItems.nth(0).textContent();
+    await demoItems.nth(1).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await expect(demoItems.nth(0)).not.toContainText(demoFirstTitleBefore ?? "");
+
+    const demoPinnedTitle = await demoItems.nth(0).textContent();
+    await demoItems.nth(0).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await expect(demoItems.nth(0)).not.toContainText(demoPinnedTitle ?? "");
+
+    await page.reload();
+    await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
   });
 });

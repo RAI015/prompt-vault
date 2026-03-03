@@ -15,6 +15,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ErrorText } from "@/components/ui/error-text";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -135,7 +141,6 @@ type ToastState = {
 
 type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
 type PromptVaultMode = "app" | "demo";
-type PreviewTab = "rendered" | "original";
 
 const sortPromptsByPinnedAt = (
   prompts: PromptLike[],
@@ -308,12 +313,9 @@ export const PromptVaultClient = ({
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [activePlaceholderKey, setActivePlaceholderKey] = useState<string | null>(null);
-  const [activePreviewTab, setActivePreviewTab] = useState<PreviewTab>("rendered");
-  const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const copyMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const promptOrderMap = useMemo(
@@ -512,8 +514,6 @@ export const PromptVaultClient = ({
     setIsEditing(false);
     setActivePlaceholderKey(null);
     setFormState(toPromptInputState(prompt));
-    setActivePreviewTab("rendered");
-    setIsCopyMenuOpen(false);
     setPlaceholderValues({});
     setPlaceholderUndoValues({});
     setToast(null);
@@ -719,38 +719,8 @@ export const PromptVaultClient = ({
       showToast("原文をコピーしました", "success");
     } catch {
       showToast("原文コピーに失敗しました", "error");
-    } finally {
-      setIsCopyMenuOpen(false);
     }
   }, [selectedPrompt, showToast]);
-
-  useEffect(() => {
-    if (activePreviewTab !== "rendered" && isCopyMenuOpen) {
-      setIsCopyMenuOpen(false);
-    }
-  }, [activePreviewTab, isCopyMenuOpen]);
-
-  useEffect(() => {
-    if (!isCopyMenuOpen) {
-      return;
-    }
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!copyMenuRef.current) {
-        return;
-      }
-      if (copyMenuRef.current.contains(event.target as Node)) {
-        return;
-      }
-
-      setIsCopyMenuOpen(false);
-    };
-
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [isCopyMenuOpen]);
 
   const clearPlaceholderValues = useCallback(() => {
     setPlaceholderValues({});
@@ -1344,137 +1314,65 @@ export const PromptVaultClient = ({
 
                 <section
                   data-pv={PV_SELECTORS.previewPane}
-                  className="flex min-h-0 flex-col overflow-hidden rounded-l-none rounded-r-md border border-l-0 p-4"
+                  className="flex min-h-0 flex-col overflow-hidden rounded-l-none rounded-r-md border border-l-0 bg-muted/20 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div
-                      className="inline-flex rounded-lg border bg-muted p-1.5 shadow-sm"
-                      role="tablist"
-                      aria-label="プレビュー切り替え"
-                    >
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activePreviewTab === "rendered"}
-                        aria-controls="preview-rendered-panel"
-                        id="preview-rendered-tab"
-                        className={cn(
-                          "rounded-md px-3 py-1.5 text-sm transition-all",
-                          activePreviewTab === "rendered"
-                            ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
-                            : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
-                        )}
-                        onClick={() => setActivePreviewTab("rendered")}
-                      >
-                        レンダリング結果
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activePreviewTab === "original"}
-                        aria-controls="preview-original-panel"
-                        id="preview-original-tab"
-                        className={cn(
-                          "rounded-md px-3 py-1.5 text-sm transition-all",
-                          activePreviewTab === "original"
-                            ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-1 ring-primary/40"
-                            : "text-foreground/70 hover:bg-background/80 hover:text-foreground",
-                        )}
-                        onClick={() => setActivePreviewTab("original")}
-                      >
-                        元の文章
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <Copy className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-medium">レンダリング結果</h3>
                     </div>
-                    {activePreviewTab === "rendered" && (
-                      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={copyPlainText}
-                          title="プロンプト本文のみをコピーします"
-                          data-pv={PV_SELECTORS.copyBodyButton}
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyPlainText}
+                        title="プロンプト本文のみをコピーします"
+                        data-pv={PV_SELECTORS.copyBodyButton}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        本文コピー
+                        <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
+                          ⌥C
+                        </kbd>
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className={buttonVariants({ variant: "outline", size: "sm" })}
+                          data-pv={PV_SELECTORS.copyMenuButton}
                         >
-                          <Copy className="mr-2 h-4 w-4" />
-                          本文コピー
-                          <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                            ⌥C
-                          </kbd>
-                        </Button>
-                        <div ref={copyMenuRef} className="relative">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            type="button"
-                            aria-haspopup="menu"
-                            aria-expanded={isCopyMenuOpen}
-                            onClick={() => setIsCopyMenuOpen((prev) => !prev)}
-                            data-pv={PV_SELECTORS.copyMenuButton}
+                          …
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              void copyMarkdownText();
+                            }}
+                            data-pv={PV_SELECTORS.copyMarkdownButton}
                           >
-                            …
-                          </Button>
-                          {isCopyMenuOpen && (
-                            <div
-                              className="absolute right-0 top-full z-10 mt-2 min-w-48 rounded-md border bg-popover p-1 shadow-md"
-                              role="menu"
-                            >
-                              <button
-                                type="button"
-                                className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
-                                onClick={() => {
-                                  void copyMarkdownText();
-                                  setIsCopyMenuOpen(false);
-                                }}
-                                data-pv={PV_SELECTORS.copyMarkdownButton}
-                                role="menuitem"
-                              >
-                                Markdown整形コピー
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
-                                onClick={() => {
-                                  void copyOriginalText();
-                                }}
-                                data-pv={PV_SELECTORS.copyOriginalButton}
-                                role="menuitem"
-                              >
-                                原文（テンプレ）コピー
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                            Markdown整形コピー
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              void copyOriginalText();
+                            }}
+                            data-pv={PV_SELECTORS.copyOriginalButton}
+                          >
+                            原文（テンプレ）コピー
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
                   <div
                     id="preview-rendered-panel"
-                    role="tabpanel"
-                    aria-labelledby="preview-rendered-tab"
-                    className={cn(
-                      "mt-3 min-h-0 flex-1 flex-col space-y-2",
-                      activePreviewTab === "rendered" ? "flex" : "hidden",
-                    )}
+                    className="mt-3 flex min-h-0 flex-1 flex-col space-y-2"
                   >
                     <ScrollArea
                       data-pv={PV_SELECTORS.renderedOutput}
-                      className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3"
+                      className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
                     >
                       {renderedPreviewNodes}
-                    </ScrollArea>
-                  </div>
-
-                  <div
-                    id="preview-original-panel"
-                    role="tabpanel"
-                    aria-labelledby="preview-original-tab"
-                    className={cn(
-                      "mt-3 min-h-0 flex-1 flex-col space-y-2",
-                      activePreviewTab === "original" ? "flex" : "hidden",
-                    )}
-                  >
-                    <ScrollArea className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-muted/30 p-3">
-                      {selectedPrompt.body}
                     </ScrollArea>
                   </div>
                 </section>

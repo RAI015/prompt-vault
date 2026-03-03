@@ -1,7 +1,7 @@
+import { ThemeProvider } from "@/components/theme-provider";
+import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-
-import { ThemeProvider } from "@/components/theme-provider";
 
 import "@/app/globals.css";
 
@@ -16,6 +16,7 @@ const RootLayout = ({ children }: { children: ReactNode }) => {
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

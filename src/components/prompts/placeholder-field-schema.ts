@@ -24,6 +24,22 @@ export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
     options: ["local", "dev", "stg", "prod"],
   },
   {
+    key: "service",
+    type: "select",
+    label: "サービス",
+    options: [
+      "supabase",
+      "vercel",
+      "github",
+      "aws",
+      "gcp",
+      "azure",
+      "cloudflare",
+      "auth0",
+      "stripe",
+    ],
+  },
+  {
     key: "priority",
     type: "select",
     label: "優先度",

@@ -182,6 +182,9 @@ test.describe("Prompt Vault E2E", () => {
   });
 
   test("DEMO: 閲覧できて、置換が反映され、禁止操作が表示されない", async ({ page }) => {
+    const bugPromptTitle = "BUG切り分けテンプレ（最初の10分）";
+    const configPromptTitle = "CONFIG：キー/設定どこ？（場所・手順）";
+
     await page.goto("/demo");
     await page.setViewportSize({ width: 1280, height: 620 });
 
@@ -260,7 +263,34 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度: high");
 
-    await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
+    await page
+      .getByTestId(PV_SELECTORS.searchResultItem)
+      .filter({ hasText: configPromptTitle })
+      .click();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(configPromptTitle);
+
+    const serviceSelect = page.getByTestId(getPlaceholderInputSelector("service"));
+    await expect(serviceSelect).toBeVisible();
+    await serviceSelect.click();
+    await page.getByRole("option", { name: "vercel" }).click();
+    await expect(serviceSelect).toContainText("vercel");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("vercel");
+
+    await page.reload();
+    await expect
+      .poll(async () => {
+        return page.evaluate(() => {
+          return window.localStorage.getItem("pv:placeholders:demo");
+        });
+      })
+      .toContain('"service":"vercel"');
+    await page
+      .getByTestId(PV_SELECTORS.searchResultItem)
+      .filter({ hasText: bugPromptTitle })
+      .click();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(bugPromptTitle);
+    await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("");
+    await expect(errorLogsInput).toHaveValue("");
     await errorLogsInput.fill("手入力ログ");
     await expect(fillExampleButton).toBeDisabled();
     await expect(errorLogsInput).toHaveValue("手入力ログ");

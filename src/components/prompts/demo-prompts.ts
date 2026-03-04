@@ -22,6 +22,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
       "",
       "## 追加情報",
       "- 環境: {{env}}",
+      "- 優先度: {{priority}}",
       "- 直前に変えた点: {{change_text}}",
       "- 再現手順: {{steps_text}}",
     ].join("\n"),

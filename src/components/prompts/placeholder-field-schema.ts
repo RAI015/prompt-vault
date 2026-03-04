@@ -1,4 +1,4 @@
-export type FieldType = "longText";
+export type FieldType = "longText" | "select";
 
 export type FieldSchema = {
   key: string;
@@ -6,9 +6,16 @@ export type FieldSchema = {
   label?: string;
   placeholder?: string;
   example?: string;
+  options?: string[];
 };
 
 export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
+  {
+    key: "env",
+    type: "select",
+    label: "環境",
+    options: ["local", "dev", "stg", "prod"],
+  },
   {
     key: "error_logs",
     type: "longText",

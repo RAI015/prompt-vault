@@ -24,6 +24,13 @@ import {
 import { ErrorText } from "@/components/ui/error-text";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -832,6 +839,7 @@ export const PromptVaultClient = ({
   });
   const renderPlaceholderField = (key: string) => {
     const schema = getPlaceholderFieldSchema(key);
+    const isSelect = schema?.type === "select";
     const isLongText = schema?.type === "longText" || (!schema && isLongTextPlaceholder(key));
     const label = schema?.label ?? `{{${key}}}`;
     const placeholderText = schema?.placeholder ?? (isLongText ? "複数行の入力に対応" : "値を入力");
@@ -841,7 +849,29 @@ export const PromptVaultClient = ({
         <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
           {label}
         </label>
-        {isLongText ? (
+        {isSelect ? (
+          <Select
+            value={(placeholderValues[key] ?? "") || undefined}
+            onOpenChange={(open) => setActivePlaceholderKey(open ? key : null)}
+            onValueChange={(value) =>
+              setPlaceholderValues((prev) => ({
+                ...prev,
+                [key]: value,
+              }))
+            }
+          >
+            <SelectTrigger id={`placeholder-${key}`} data-pv={getPlaceholderInputSelector(key)}>
+              <SelectValue placeholder="選択してください" />
+            </SelectTrigger>
+            <SelectContent>
+              {schema.options?.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : isLongText ? (
           <div className="space-y-2">
             <Textarea
               id={`placeholder-${key}`}

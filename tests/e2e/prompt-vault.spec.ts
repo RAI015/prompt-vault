@@ -195,6 +195,7 @@ test.describe("Prompt Vault E2E", () => {
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
     const envSelect = page.getByTestId(getPlaceholderInputSelector("env"));
+    const prioritySelect = page.getByTestId(getPlaceholderInputSelector("priority"));
     const errorLogsInput = page.getByTestId(getPlaceholderInputSelector("error_logs"));
     const fillExampleButton = page.getByTestId(PV_SELECTORS.fillPlaceholderExamplesButton);
     const placeholderScrollArea = page
@@ -216,6 +217,7 @@ test.describe("Prompt Vault E2E", () => {
     ].join("\n");
     await expect(input).toBeVisible();
     await expect(envSelect).toBeVisible();
+    await expect(prioritySelect).toBeVisible();
     await expect(page.getByLabel("エラーログ")).toBeVisible();
     await expect(errorLogsInput).toHaveAttribute("placeholder", "エラーログを貼り付け");
     await expect(fillExampleButton).toBeVisible();
@@ -237,20 +239,26 @@ test.describe("Prompt Vault E2E", () => {
     await input.fill("E2Eデモ入力");
     await envSelect.click();
     await page.getByRole("option", { name: "stg" }).click();
+    await prioritySelect.click();
+    await page.getByRole("option", { name: "high" }).click();
     await fillExampleButton.click();
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("{{goal_text}}");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度: high");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(input).toHaveValue("E2Eデモ入力");
     await expect(envSelect).toContainText("stg");
+    await expect(prioritySelect).toContainText("high");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);
 
     await page.reload();
     await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");
     await expect(page.getByTestId(getPlaceholderInputSelector("env"))).toContainText("stg");
+    await expect(page.getByTestId(getPlaceholderInputSelector("priority"))).toContainText("high");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度: high");
 
     await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
     await errorLogsInput.fill("手入力ログ");

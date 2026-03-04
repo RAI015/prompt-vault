@@ -839,17 +839,16 @@ export const PromptVaultClient = ({
   });
   const renderPlaceholderField = (key: string) => {
     const schema = getPlaceholderFieldSchema(key);
-    const isSelect = schema?.type === "select";
-    const isLongText = schema?.type === "longText" || (!schema && isLongTextPlaceholder(key));
+    const isLongText = !schema && isLongTextPlaceholder(key);
     const label = schema?.label ?? `{{${key}}}`;
     const placeholderText = schema?.placeholder ?? (isLongText ? "複数行の入力に対応" : "値を入力");
 
-    return (
-      <div key={key} className="space-y-1">
-        <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
-          {label}
-        </label>
-        {isSelect ? (
+    if (schema?.type === "select") {
+      return (
+        <div key={key} className="space-y-1">
+          <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
+            {label}
+          </label>
           <Select
             value={(placeholderValues[key] ?? "") || undefined}
             onOpenChange={(open) => setActivePlaceholderKey(open ? key : null)}
@@ -864,14 +863,23 @@ export const PromptVaultClient = ({
               <SelectValue placeholder="選択してください" />
             </SelectTrigger>
             <SelectContent>
-              {schema.options?.map((option) => (
+              {schema.options.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        ) : isLongText ? (
+        </div>
+      );
+    }
+
+    return (
+      <div key={key} className="space-y-1">
+        <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
+          {label}
+        </label>
+        {isLongText || schema?.type === "longText" ? (
           <div className="space-y-2">
             <Textarea
               id={`placeholder-${key}`}

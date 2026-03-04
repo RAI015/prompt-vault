@@ -1,13 +1,20 @@
-export type FieldType = "longText" | "select";
-
-export type FieldSchema = {
+type BaseFieldSchema = {
   key: string;
-  type: FieldType;
   label?: string;
   placeholder?: string;
   example?: string;
-  options?: string[];
 };
+
+export type LongTextFieldSchema = BaseFieldSchema & {
+  type: "longText";
+};
+
+export type SelectFieldSchema = BaseFieldSchema & {
+  type: "select";
+  options: string[];
+};
+
+export type FieldSchema = LongTextFieldSchema | SelectFieldSchema;
 
 export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
   {
@@ -15,6 +22,12 @@ export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
     type: "select",
     label: "環境",
     options: ["local", "dev", "stg", "prod"],
+  },
+  {
+    key: "priority",
+    type: "select",
+    label: "優先度",
+    options: ["critical", "high", "medium", "low"],
   },
   {
     key: "error_logs",

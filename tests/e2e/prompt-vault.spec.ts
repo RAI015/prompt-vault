@@ -192,9 +192,9 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("heading", { name: "プレースホルダ入力" })).toBeVisible();
     await expect(page.getByText("レンダリング結果")).toBeVisible();
     await expect(page.getByRole("tab", { name: "元の文章" })).toHaveCount(0);
-
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
+    const envSelect = page.getByTestId(getPlaceholderInputSelector("env"));
     const errorLogsInput = page.getByTestId(getPlaceholderInputSelector("error_logs"));
     const fillExampleButton = page.getByTestId(PV_SELECTORS.fillPlaceholderExamplesButton);
     const placeholderScrollArea = page
@@ -215,6 +215,7 @@ test.describe("Prompt Vault E2E", () => {
       "- Retry with DNS 1.1.1.1 -> OK",
     ].join("\n");
     await expect(input).toBeVisible();
+    await expect(envSelect).toBeVisible();
     await expect(page.getByLabel("エラーログ")).toBeVisible();
     await expect(errorLogsInput).toHaveAttribute("placeholder", "エラーログを貼り付け");
     await expect(fillExampleButton).toBeVisible();
@@ -234,16 +235,22 @@ test.describe("Prompt Vault E2E", () => {
     expect(placeholderScrollTop).toBeGreaterThan(0);
 
     await input.fill("E2Eデモ入力");
+    await envSelect.click();
+    await page.getByRole("option", { name: "stg" }).click();
     await fillExampleButton.click();
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("{{goal_text}}");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(input).toHaveValue("E2Eデモ入力");
+    await expect(envSelect).toContainText("stg");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(errorLogsExample);
 
     await page.reload();
     await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("E2Eデモ入力");
+    await expect(page.getByTestId(getPlaceholderInputSelector("env"))).toContainText("stg");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
 
     await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
     await errorLogsInput.fill("手入力ログ");

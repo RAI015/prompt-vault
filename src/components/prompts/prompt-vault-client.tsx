@@ -1140,7 +1140,7 @@ export const PromptVaultClient = ({
           style={{ touchAction: "none" }}
         />
 
-        <main className="flex flex-1 flex-col overflow-hidden px-2 py-2">
+        <main className="flex flex-1 flex-col overflow-hidden px-1 pt-2">
           {!isFormMode && !selectedPrompt ? (
             <div className="flex h-full items-center justify-center px-6 text-muted-foreground">
               プロンプトを選択してください

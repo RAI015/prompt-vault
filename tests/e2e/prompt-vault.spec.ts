@@ -194,7 +194,7 @@ test.describe("Prompt Vault E2E", () => {
 
     await expect(page.getByTestId(PV_SELECTORS.leftPane)).toBeVisible();
     await expect(page.getByRole("heading", { name: "プレースホルダ入力" })).toBeVisible();
-    await expect(page.getByText("レンダリング結果")).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.previewTab)).toBeVisible();
     await expect(page.getByRole("tab", { name: "元の文章" })).toHaveCount(0);
     const key = "goal_text";
     const input = page.getByTestId(getPlaceholderInputSelector(key));
@@ -314,6 +314,103 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("button", { name: "編集" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "削除" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
+  });
+
+  test("DEMO: コピー履歴を保存・ロードでき、正規化とリロード保持が効く", async ({ page }) => {
+    const bugPromptTitle = "BUG切り分けテンプレ（最初の10分）";
+    const configPromptTitle = "CONFIG：キー/設定どこ？（場所・手順）";
+    const key = "goal_text";
+    const firstValue = "履歴テスト入力";
+    const normalizedValue = "正規化後の履歴入力";
+    const bugHistoryStorageKey = "pv:copyHistory:demo:demo-bug-triage";
+
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: async (_text: string) => {} },
+        configurable: true,
+      });
+    });
+
+    await page.goto("/demo");
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    const input = page.getByTestId(getPlaceholderInputSelector(key));
+    const envSelect = page.getByTestId(getPlaceholderInputSelector("env"));
+    const errorLogsInput = page.getByTestId(getPlaceholderInputSelector("error_logs"));
+    await expect(input).toBeVisible();
+    await input.fill(firstValue);
+    await envSelect.click();
+    await page.getByRole("option", { name: "stg" }).click();
+
+    await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
+    await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
+
+    await page.getByTestId(PV_SELECTORS.historyTab).click();
+    await expect(page.getByTestId(PV_SELECTORS.historyPanel)).toContainText(firstValue);
+    await expect(page.getByTestId(PV_SELECTORS.historyCreatedAt)).toContainText("保存日時:");
+
+    await page.getByTestId(PV_SELECTORS.historyLoadButton).click();
+    await expect(page.getByTestId(PV_SELECTORS.toastError)).toContainText(
+      "入力欄をクリアしてください",
+    );
+    await expect(input).toHaveValue(firstValue);
+
+    await page.getByTestId(PV_SELECTORS.clearPlaceholdersButton).click();
+    await expect(input).toHaveValue("");
+    await expect(envSelect).toContainText("選択してください");
+    await page.getByTestId(PV_SELECTORS.historyLoadButton).click();
+    await expect(input).toHaveValue(firstValue);
+    await expect(page.getByTestId(PV_SELECTORS.previewTab)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(firstValue);
+
+    await page.reload();
+    await expect(page.getByTestId(PV_SELECTORS.historyTab)).toBeVisible();
+    await page.getByTestId(PV_SELECTORS.historyTab).click();
+    await expect(page.getByTestId(PV_SELECTORS.historyPanel)).toContainText(firstValue);
+
+    await page.evaluate(
+      ({ normalizedValue, historyStorageKey }) => {
+        const payload = {
+          createdAt: new Date().toISOString(),
+          title: "BUG切り分けテンプレ（最初の10分）",
+          values: {
+            goal_text: normalizedValue,
+            extra_key: "このキーは現在のテンプレに存在しない",
+          },
+        };
+        window.localStorage.setItem(historyStorageKey, JSON.stringify(payload));
+      },
+      { normalizedValue, historyStorageKey: bugHistoryStorageKey },
+    );
+
+    await page
+      .getByTestId(PV_SELECTORS.searchResultItem)
+      .filter({ hasText: configPromptTitle })
+      .click();
+    await expect(page.getByTestId(PV_SELECTORS.previewTab)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await page
+      .getByTestId(PV_SELECTORS.searchResultItem)
+      .filter({ hasText: bugPromptTitle })
+      .click();
+    await expect(page.getByTestId(PV_SELECTORS.previewTab)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await page.getByTestId(PV_SELECTORS.historyTab).click();
+    await expect(page.getByTestId(PV_SELECTORS.historyPanel)).toContainText(normalizedValue);
+
+    await expect(input).toHaveValue("");
+    await page.getByTestId(PV_SELECTORS.historyLoadButton).click();
+    await expect(input).toHaveValue(normalizedValue);
+    await expect(errorLogsInput).toHaveValue("");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(normalizedValue);
   });
 
   test("pin したプロンプトが先頭に並び、demo でも pin を切り替えられる", async ({ page }) => {

@@ -52,7 +52,18 @@ import {
 } from "@/server/actions/prompt-actions";
 import { PLACEHOLDER_REGEX, extractPlaceholders, renderTemplate } from "@/utils/placeholder";
 import type { Prompt } from "@prisma/client";
-import { Braces, Copy, Eraser, Pencil, Pin, Plus, Save, Search, Trash2 } from "lucide-react";
+import {
+  Braces,
+  Copy,
+  Eraser,
+  History,
+  Pencil,
+  Pin,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -94,6 +105,7 @@ const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
 const PLACEHOLDER_PANE_WIDTH_KEY = "pv:placeholderPaneWidthPx";
 const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
 const SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX = "pv:selectedPromptId:";
+const COPY_HISTORY_STORAGE_KEY_PREFIX = "pv:copyHistory:";
 const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
@@ -151,6 +163,75 @@ type ToastState = {
 
 type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
 type PromptVaultMode = "app" | "demo";
+type CopyHistoryEntry = {
+  createdAt: string;
+  title: string;
+  values: Record<string, string>;
+};
+
+const getCopyHistoryStorageKey = (mode: PromptVaultMode, promptId: string): string => {
+  return `${COPY_HISTORY_STORAGE_KEY_PREFIX}${mode}:${promptId}`;
+};
+
+const normalizeValuesByPlaceholders = (
+  keys: string[],
+  values: Record<string, string>,
+): Record<string, string> => {
+  return Object.fromEntries(keys.map((key) => [key, values[key] ?? ""]));
+};
+
+const isAllPlaceholdersEmpty = (keys: string[], values: Record<string, string>): boolean => {
+  return keys.every((key) => (values[key] ?? "").trim().length === 0);
+};
+
+const isRecordString = (value: unknown): value is Record<string, string> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  return Object.values(value).every((entry) => typeof entry === "string");
+};
+
+const toAbsoluteDateLabel = (isoDate: string): string => {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+};
+
+const toRelativeDateLabel = (isoDate: string): string => {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return "日時不明";
+  }
+  const rawDiffMs = date.getTime() - Date.now();
+  // 履歴用途では未来時刻を0に丸め、過去経過だけを表示する。
+  const pastDiffMs = Math.min(rawDiffMs, 0);
+  const elapsedSeconds = Math.floor(Math.abs(pastDiffMs) / 1000);
+  const rtf = new Intl.RelativeTimeFormat("ja", { numeric: "auto" });
+
+  if (elapsedSeconds < 60) {
+    return "0分前";
+  }
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) {
+    return rtf.format(-elapsedMinutes, "minute");
+  }
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return rtf.format(-elapsedHours, "hour");
+  }
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return rtf.format(-elapsedDays, "day");
+};
 
 const sortPromptsByPinnedAt = (
   prompts: PromptLike[],
@@ -326,11 +407,14 @@ export const PromptVaultClient = ({
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
   const [serviceInputMode, setServiceInputMode] = useState<"preset" | "custom">("preset");
   const [activePlaceholderKey, setActivePlaceholderKey] = useState<string | null>(null);
+  const [activeRightTab, setActiveRightTab] = useState<"preview" | "history">("preview");
+  const [copyHistory, setCopyHistory] = useState<CopyHistoryEntry | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
+  const previousSelectedPromptIdRef = useRef<string | null>(selectedPromptId);
   const promptOrderMap = useMemo(
     () => new Map(initialPrompts.map((prompt, index) => [prompt.id, index])),
     [initialPrompts],
@@ -510,7 +594,16 @@ export const PromptVaultClient = ({
   }, [prompts, search]);
 
   const previewBody = selectedPrompt?.body ?? formState.body;
-  const placeholders = extractPlaceholders(previewBody);
+  const placeholders = useMemo(() => extractPlaceholders(previewBody), [previewBody]);
+  const normalizedHistoryValues = useMemo(() => {
+    return normalizeValuesByPlaceholders(placeholders, copyHistory?.values ?? {});
+  }, [copyHistory?.values, placeholders]);
+  const renderedHistoryBody = useMemo(() => {
+    if (!copyHistory) {
+      return "";
+    }
+    return renderTemplate(previewBody, normalizedHistoryValues);
+  }, [copyHistory, normalizedHistoryValues, previewBody]);
   const renderedBody = renderTemplate(previewBody, placeholderValues);
   const renderedPreviewNodes = useMemo(() => {
     const nodes: ReactNode[] = [];
@@ -552,6 +645,57 @@ export const PromptVaultClient = ({
 
     return nodes;
   }, [activePlaceholderKey, placeholderValues, previewBody]);
+
+  useEffect(() => {
+    if (!selectedPromptId) {
+      setCopyHistory(null);
+      return;
+    }
+
+    const historyStorageKey = getCopyHistoryStorageKey(mode, selectedPromptId);
+    const raw = localStorage.getItem(historyStorageKey);
+    if (!raw) {
+      setCopyHistory(null);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        localStorage.removeItem(historyStorageKey);
+        setCopyHistory(null);
+        return;
+      }
+
+      const createdAt =
+        "createdAt" in parsed && typeof parsed.createdAt === "string" ? parsed.createdAt : null;
+      const title = "title" in parsed && typeof parsed.title === "string" ? parsed.title : null;
+      const values = "values" in parsed ? parsed.values : null;
+
+      if (!createdAt || !title || !isRecordString(values)) {
+        localStorage.removeItem(historyStorageKey);
+        setCopyHistory(null);
+        return;
+      }
+
+      setCopyHistory({
+        createdAt,
+        title,
+        values: normalizeValuesByPlaceholders(placeholders, values),
+      });
+    } catch {
+      localStorage.removeItem(historyStorageKey);
+      setCopyHistory(null);
+    }
+  }, [mode, placeholders, selectedPromptId]);
+
+  useEffect(() => {
+    if (previousSelectedPromptIdRef.current === selectedPromptId) {
+      return;
+    }
+    previousSelectedPromptIdRef.current = selectedPromptId;
+    setActiveRightTab("preview");
+  }, [selectedPromptId]);
 
   const resetFormErrors = () => {
     setFormError("");
@@ -763,10 +907,30 @@ export const PromptVaultClient = ({
     try {
       await navigator.clipboard.writeText(renderedBody);
       showToast("本文をコピーしました", "success");
+
+      if (!selectedPrompt) {
+        return;
+      }
+
+      const nextHistory: CopyHistoryEntry = {
+        createdAt: new Date().toISOString(),
+        title: selectedPrompt.title,
+        values: { ...placeholderValues },
+      };
+      setCopyHistory(nextHistory);
+
+      try {
+        localStorage.setItem(
+          getCopyHistoryStorageKey(mode, selectedPrompt.id),
+          JSON.stringify(nextHistory),
+        );
+      } catch {
+        showToast("履歴の保存に失敗しました", "error");
+      }
     } catch {
       showToast("本文コピーに失敗しました", "error");
     }
-  }, [renderedBody, showToast]);
+  }, [mode, placeholderValues, renderedBody, selectedPrompt, showToast]);
 
   const copyMarkdownText = useCallback(async () => {
     const markdownText = `\`\`\`\n${renderedBody}\n\`\`\``;
@@ -793,6 +957,19 @@ export const PromptVaultClient = ({
     setServiceInputMode("preset");
     localStorage.removeItem(placeholderValuesStorageKey);
   }, [placeholderValuesStorageKey]);
+
+  const loadCopyHistory = useCallback(() => {
+    if (!copyHistory) {
+      return;
+    }
+    if (!isAllPlaceholdersEmpty(placeholders, placeholderValues)) {
+      showToast("入力欄をクリアしてください", "error");
+      return;
+    }
+
+    setPlaceholderValues(normalizedHistoryValues);
+    setActiveRightTab("preview");
+  }, [copyHistory, normalizedHistoryValues, placeholderValues, placeholders, showToast]);
 
   const fillPlaceholderExamples = useCallback(() => {
     setPlaceholderValues((prev) => {
@@ -906,7 +1083,7 @@ export const PromptVaultClient = ({
       if (key === SERVICE_PLACEHOLDER_KEY) {
         const presetOptions = schema.options.filter((option) => option !== SERVICE_OTHER_VALUE);
         const serviceValue = placeholderValues[key] ?? "";
-        const selectValue = presetOptions.includes(serviceValue) ? serviceValue : undefined;
+        const selectValue = presetOptions.includes(serviceValue) ? serviceValue : "";
 
         if (serviceInputMode === "custom") {
           return (
@@ -995,7 +1172,7 @@ export const PromptVaultClient = ({
             {label}
           </label>
           <Select
-            value={(placeholderValues[key] ?? "") || undefined}
+            value={placeholderValues[key] ?? ""}
             onOpenChange={(open) => setActivePlaceholderKey(open ? key : null)}
             onValueChange={(value) =>
               setPlaceholderValues((prev) => ({
@@ -1499,12 +1676,55 @@ export const PromptVaultClient = ({
                   data-pv={PV_SELECTORS.previewPane}
                   className="flex min-h-0 flex-col overflow-hidden rounded-l-none rounded-r-md border border-l-0 bg-muted/20 p-4"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Copy className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="font-medium">レンダリング結果</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+                    <div
+                      className="inline-flex rounded-md border bg-background/60 p-1"
+                      role="tablist"
+                      aria-label="プレビューと履歴"
+                    >
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeRightTab === "preview"}
+                        aria-controls="preview-rendered-panel"
+                        className={cn(
+                          "w-24 rounded px-3 py-1 text-center text-sm",
+                          activeRightTab === "preview"
+                            ? "bg-accent font-medium"
+                            : "text-muted-foreground",
+                        )}
+                        onClick={() => setActiveRightTab("preview")}
+                        data-pv={PV_SELECTORS.previewTab}
+                      >
+                        プレビュー
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeRightTab === "history"}
+                        aria-controls="history-panel"
+                        className={cn(
+                          "w-24 rounded px-3 py-1 text-center text-sm",
+                          activeRightTab === "history"
+                            ? "bg-accent font-medium"
+                            : "text-muted-foreground",
+                        )}
+                        onClick={() => setActiveRightTab("history")}
+                        data-pv={PV_SELECTORS.historyTab}
+                      >
+                        履歴
+                      </button>
                     </div>
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                  </div>
+
+                  <div
+                    id="preview-rendered-panel"
+                    className={cn(
+                      "mt-3 min-h-0 flex-1 flex-col gap-2",
+                      activeRightTab === "preview" ? "flex" : "hidden",
+                    )}
+                  >
+                    <div className="flex h-9 items-center justify-end gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -1545,18 +1765,58 @@ export const PromptVaultClient = ({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                  </div>
-
-                  <div
-                    id="preview-rendered-panel"
-                    className="mt-3 flex min-h-0 flex-1 flex-col space-y-2"
-                  >
                     <ScrollArea
                       data-pv={PV_SELECTORS.renderedOutput}
                       className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
                     >
                       {renderedPreviewNodes}
                     </ScrollArea>
+                  </div>
+
+                  <div
+                    id="history-panel"
+                    data-pv={PV_SELECTORS.historyPanel}
+                    className={cn(
+                      "mt-3 min-h-0 flex-1 flex-col gap-2",
+                      activeRightTab === "history" ? "flex" : "hidden",
+                    )}
+                  >
+                    {copyHistory ? (
+                      <>
+                        <div className="flex h-9 items-center justify-between gap-2">
+                          <p
+                            className="text-xs text-muted-foreground"
+                            title={toAbsoluteDateLabel(copyHistory.createdAt)}
+                            data-pv={PV_SELECTORS.historyCreatedAt}
+                          >
+                            保存日時: {toRelativeDateLabel(copyHistory.createdAt)}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={loadCopyHistory}
+                            data-pv={PV_SELECTORS.historyLoadButton}
+                            disabled={!copyHistory}
+                          >
+                            <History className="mr-2 h-4 w-4" />
+                            ロード
+                          </Button>
+                        </div>
+                        <ScrollArea
+                          data-pv={PV_SELECTORS.historyRenderedOutput}
+                          className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
+                        >
+                          {renderedHistoryBody}
+                        </ScrollArea>
+                        <p className="text-xs text-muted-foreground">
+                          ※現在のテンプレに当てたプレビューです
+                        </p>
+                      </>
+                    ) : (
+                      <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
+                        このプロンプトの履歴はまだありません。
+                      </div>
+                    )}
                   </div>
                 </section>
               </div>

@@ -417,9 +417,11 @@ export const PromptVaultClient = ({
     localStorage.setItem(placeholderValuesStorageKey, JSON.stringify(placeholderValues));
   }, [placeholderValues, placeholderValuesStorageKey]);
 
+  const serviceValue = placeholderValues[SERVICE_PLACEHOLDER_KEY];
+
   useEffect(() => {
-    const serviceValue = (placeholderValues[SERVICE_PLACEHOLDER_KEY] ?? "").trim();
-    if (!serviceValue) {
+    if (serviceValue === undefined) {
+      setServiceInputMode("preset");
       return;
     }
 
@@ -429,9 +431,15 @@ export const PromptVaultClient = ({
       return;
     }
 
+    const normalizedServiceValue = serviceValue.trim();
     const presetOptions = serviceSchema.options.filter((option) => option !== SERVICE_OTHER_VALUE);
-    setServiceInputMode(presetOptions.includes(serviceValue) ? "preset" : "custom");
-  }, [placeholderValues]);
+    if (normalizedServiceValue.length > 0 && presetOptions.includes(normalizedServiceValue)) {
+      setServiceInputMode("preset");
+      return;
+    }
+
+    setServiceInputMode("custom");
+  }, [serviceValue]);
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,

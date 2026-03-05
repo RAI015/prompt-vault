@@ -212,21 +212,23 @@ const toRelativeDateLabel = (isoDate: string): string => {
   if (Number.isNaN(date.getTime())) {
     return "日時不明";
   }
-  const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const diffMs = Math.min(date.getTime() - Date.now(), 0);
+  const direction = -1;
+  const absSeconds = Math.floor(Math.abs(diffMs) / 1000);
   const rtf = new Intl.RelativeTimeFormat("ja", { numeric: "auto" });
 
-  if (Math.abs(diffSeconds) < 60) {
-    return diffSeconds < 0 ? "1分未満前" : "1分未満後";
+  if (absSeconds < 60) {
+    return "0分前";
   }
-  const diffMinutes = Math.round(diffSeconds / 60);
+  const diffMinutes = Math.floor(absSeconds / 60) * direction;
   if (Math.abs(diffMinutes) < 60) {
     return rtf.format(diffMinutes, "minute");
   }
-  const diffHours = Math.round(diffMinutes / 60);
+  const diffHours = Math.floor(Math.abs(diffMinutes) / 60) * direction;
   if (Math.abs(diffHours) < 24) {
     return rtf.format(diffHours, "hour");
   }
-  const diffDays = Math.round(diffHours / 24);
+  const diffDays = Math.floor(Math.abs(diffHours) / 24) * direction;
   return rtf.format(diffDays, "day");
 };
 

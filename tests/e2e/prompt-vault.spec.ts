@@ -322,6 +322,7 @@ test.describe("Prompt Vault E2E", () => {
     const key = "goal_text";
     const firstValue = "履歴テスト入力";
     const normalizedValue = "正規化後の履歴入力";
+    const bugHistoryStorageKey = "pv:copyHistory:demo:demo-bug-triage";
 
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {
@@ -371,8 +372,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.historyPanel)).toContainText(firstValue);
 
     await page.evaluate(
-      ({ normalizedValue }) => {
-        const key = "pv:copyHistory:demo:demo-bug-triage";
+      ({ normalizedValue, historyStorageKey }) => {
         const payload = {
           createdAt: new Date().toISOString(),
           title: "BUG切り分けテンプレ（最初の10分）",
@@ -381,9 +381,9 @@ test.describe("Prompt Vault E2E", () => {
             extra_key: "このキーは現在のテンプレに存在しない",
           },
         };
-        window.localStorage.setItem(key, JSON.stringify(payload));
+        window.localStorage.setItem(historyStorageKey, JSON.stringify(payload));
       },
-      { normalizedValue },
+      { normalizedValue, historyStorageKey: bugHistoryStorageKey },
     );
 
     await page

@@ -212,24 +212,25 @@ const toRelativeDateLabel = (isoDate: string): string => {
   if (Number.isNaN(date.getTime())) {
     return "日時不明";
   }
-  const diffMs = Math.min(date.getTime() - Date.now(), 0);
-  const direction = -1;
-  const absSeconds = Math.floor(Math.abs(diffMs) / 1000);
+  const rawDiffMs = date.getTime() - Date.now();
+  // 履歴用途では未来時刻を0に丸め、過去経過だけを表示する。
+  const pastDiffMs = Math.min(rawDiffMs, 0);
+  const elapsedSeconds = Math.floor(Math.abs(pastDiffMs) / 1000);
   const rtf = new Intl.RelativeTimeFormat("ja", { numeric: "auto" });
 
-  if (absSeconds < 60) {
+  if (elapsedSeconds < 60) {
     return "0分前";
   }
-  const diffMinutes = Math.floor(absSeconds / 60) * direction;
-  if (Math.abs(diffMinutes) < 60) {
-    return rtf.format(diffMinutes, "minute");
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) {
+    return rtf.format(-elapsedMinutes, "minute");
   }
-  const diffHours = Math.floor(Math.abs(diffMinutes) / 60) * direction;
-  if (Math.abs(diffHours) < 24) {
-    return rtf.format(diffHours, "hour");
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return rtf.format(-elapsedHours, "hour");
   }
-  const diffDays = Math.floor(Math.abs(diffHours) / 24) * direction;
-  return rtf.format(diffDays, "day");
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return rtf.format(-elapsedDays, "day");
 };
 
 const sortPromptsByPinnedAt = (
@@ -1807,6 +1808,9 @@ export const PromptVaultClient = ({
                         >
                           {renderedHistoryBody}
                         </ScrollArea>
+                        <p className="text-xs text-muted-foreground">
+                          ※現在のテンプレに当てたプレビューです
+                        </p>
                       </>
                     ) : (
                       <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">

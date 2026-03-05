@@ -37,6 +37,7 @@ export const PLACEHOLDER_FIELD_SCHEMAS: FieldSchema[] = [
       "cloudflare",
       "auth0",
       "stripe",
+      "other",
     ],
   },
   {

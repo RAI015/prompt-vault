@@ -100,6 +100,8 @@ const MAX_LEFT_PANE_WIDTH = 520;
 const DEFAULT_PLACEHOLDER_PANE_WIDTH = 360;
 const MIN_PLACEHOLDER_PANE_WIDTH = 280;
 const MAX_PLACEHOLDER_PANE_WIDTH = 560;
+const SERVICE_PLACEHOLDER_KEY = "service";
+const SERVICE_OTHER_VALUE = "other";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -319,6 +321,7 @@ export const PromptVaultClient = ({
   );
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
   const [placeholderUndoValues, setPlaceholderUndoValues] = useState<Record<string, string>>({});
+  const [serviceInputMode, setServiceInputMode] = useState<"preset" | "custom">("preset");
   const [activePlaceholderKey, setActivePlaceholderKey] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -414,6 +417,30 @@ export const PromptVaultClient = ({
     localStorage.setItem(placeholderValuesStorageKey, JSON.stringify(placeholderValues));
   }, [placeholderValues, placeholderValuesStorageKey]);
 
+  const serviceValue = placeholderValues[SERVICE_PLACEHOLDER_KEY];
+
+  useEffect(() => {
+    if (serviceValue === undefined) {
+      setServiceInputMode("preset");
+      return;
+    }
+
+    const serviceSchema = getPlaceholderFieldSchema(SERVICE_PLACEHOLDER_KEY);
+    if (serviceSchema?.type !== "select") {
+      setServiceInputMode("preset");
+      return;
+    }
+
+    const normalizedServiceValue = serviceValue.trim();
+    const presetOptions = serviceSchema.options.filter((option) => option !== SERVICE_OTHER_VALUE);
+    if (normalizedServiceValue.length > 0 && presetOptions.includes(normalizedServiceValue)) {
+      setServiceInputMode("preset");
+      return;
+    }
+
+    setServiceInputMode("custom");
+  }, [serviceValue]);
+
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,
     [prompts, selectedPromptId],
@@ -507,6 +534,7 @@ export const PromptVaultClient = ({
     setIsCreating(true);
     setIsEditing(false);
     setSelectedPromptId(null);
+    setServiceInputMode("preset");
     setActivePlaceholderKey(null);
     setFormState(toPromptInputState());
     setPlaceholderValues({});
@@ -519,6 +547,7 @@ export const PromptVaultClient = ({
     setSelectedPromptId(prompt.id);
     setIsCreating(false);
     setIsEditing(false);
+    setServiceInputMode("preset");
     setActivePlaceholderKey(null);
     setFormState(toPromptInputState(prompt));
     setPlaceholderValues({});
@@ -732,6 +761,7 @@ export const PromptVaultClient = ({
   const clearPlaceholderValues = useCallback(() => {
     setPlaceholderValues({});
     setPlaceholderUndoValues({});
+    setServiceInputMode("preset");
     localStorage.removeItem(placeholderValuesStorageKey);
   }, [placeholderValuesStorageKey]);
 
@@ -844,6 +874,92 @@ export const PromptVaultClient = ({
     const placeholderText = schema?.placeholder ?? (isLongText ? "複数行の入力に対応" : "値を入力");
 
     if (schema?.type === "select") {
+      if (key === SERVICE_PLACEHOLDER_KEY) {
+        const presetOptions = schema.options.filter((option) => option !== SERVICE_OTHER_VALUE);
+        const serviceValue = placeholderValues[key] ?? "";
+        const selectValue = presetOptions.includes(serviceValue) ? serviceValue : undefined;
+
+        if (serviceInputMode === "custom") {
+          return (
+            <div key={key} className="space-y-1">
+              <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
+                {label}
+              </label>
+              <div className="space-y-2">
+                <Input
+                  id={`placeholder-${key}`}
+                  data-pv={getPlaceholderInputSelector(key)}
+                  placeholder="サービス名を入力"
+                  value={serviceValue}
+                  onFocus={() => setActivePlaceholderKey(key)}
+                  onBlur={() => setActivePlaceholderKey(null)}
+                  onChange={(event) =>
+                    setPlaceholderValues((prev) => ({
+                      ...prev,
+                      [key]: event.target.value,
+                    }))
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setServiceInputMode("preset");
+                    setPlaceholderValues((prev) => ({
+                      ...prev,
+                      [key]: "",
+                    }));
+                  }}
+                >
+                  選択に戻る
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={key} className="space-y-1">
+            <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
+              {label}
+            </label>
+            <Select
+              value={selectValue}
+              onOpenChange={(open) => setActivePlaceholderKey(open ? key : null)}
+              onValueChange={(value) => {
+                if (value === SERVICE_OTHER_VALUE) {
+                  setServiceInputMode("custom");
+                  setPlaceholderValues((prev) => ({
+                    ...prev,
+                    [key]: "",
+                  }));
+                  return;
+                }
+
+                setServiceInputMode("preset");
+                setPlaceholderValues((prev) => ({
+                  ...prev,
+                  [key]: value,
+                }));
+              }}
+            >
+              <SelectTrigger id={`placeholder-${key}`} data-pv={getPlaceholderInputSelector(key)}>
+                <SelectValue placeholder="選択してください" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SERVICE_OTHER_VALUE}>other（その他）</SelectItem>
+                {presetOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      }
+
       return (
         <div key={key} className="space-y-1">
           <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>

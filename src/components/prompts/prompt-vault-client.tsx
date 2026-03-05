@@ -93,6 +93,7 @@ const LOG_TRIM_LINE_COUNT = 50;
 const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
 const PLACEHOLDER_PANE_WIDTH_KEY = "pv:placeholderPaneWidthPx";
 const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
+const SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX = "pv:selectedPromptId:";
 const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
@@ -303,12 +304,14 @@ export const PromptVaultClient = ({
   const isDemo = mode === "demo";
   const homeHref = isDemo ? "/demo" : "/app/prompts";
   const placeholderValuesStorageKey = `${PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX}${mode}`;
+  const selectedPromptIdStorageKey = `${SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX}${mode}`;
 
   const [prompts, setPrompts] = useState<PromptLike[]>(initialPrompts);
   const [search, setSearch] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(
     initialPrompts[0]?.id ?? null,
   );
+  const [isSelectedPromptIdRestored, setIsSelectedPromptIdRestored] = useState(false);
 
   const [isCreating, setIsCreating] = useState(isDemo ? false : initialPrompts.length === 0);
   const [isEditing, setIsEditing] = useState(false);
@@ -407,6 +410,32 @@ export const PromptVaultClient = ({
       localStorage.removeItem(placeholderValuesStorageKey);
     }
   }, [placeholderValuesStorageKey]);
+
+  useEffect(() => {
+    const storedSelectedPromptId = localStorage.getItem(selectedPromptIdStorageKey);
+    if (!storedSelectedPromptId) {
+      setIsSelectedPromptIdRestored(true);
+      return;
+    }
+    if (!prompts.some((prompt) => prompt.id === storedSelectedPromptId)) {
+      localStorage.removeItem(selectedPromptIdStorageKey);
+      setIsSelectedPromptIdRestored(true);
+      return;
+    }
+    setSelectedPromptId(storedSelectedPromptId);
+    setIsSelectedPromptIdRestored(true);
+  }, [prompts, selectedPromptIdStorageKey]);
+
+  useEffect(() => {
+    if (!isSelectedPromptIdRestored) {
+      return;
+    }
+    if (!selectedPromptId) {
+      localStorage.removeItem(selectedPromptIdStorageKey);
+      return;
+    }
+    localStorage.setItem(selectedPromptIdStorageKey, selectedPromptId);
+  }, [isSelectedPromptIdRestored, selectedPromptId, selectedPromptIdStorageKey]);
 
   useEffect(() => {
     if (Object.keys(placeholderValues).length === 0) {

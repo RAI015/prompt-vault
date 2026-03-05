@@ -283,6 +283,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(customService);
 
     await page.reload();
+    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(configPromptTitle);
     await expect
       .poll(async () => {
         return page.evaluate(() => {

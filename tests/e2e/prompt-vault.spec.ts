@@ -420,7 +420,10 @@ test.describe("Prompt Vault E2E", () => {
     );
     await expect(input).toHaveValue(normalizedValue);
     await expect(
-      page.evaluate((historyStorageKey) => window.localStorage.getItem(historyStorageKey), bugHistoryStorageKey),
+      page.evaluate(
+        (historyStorageKey) => window.localStorage.getItem(historyStorageKey),
+        bugHistoryStorageKey,
+      ),
     ).resolves.toBeNull();
 
     await page.reload();

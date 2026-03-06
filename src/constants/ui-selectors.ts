@@ -21,6 +21,7 @@ export const PV_SELECTORS = {
   historyTab: "pv-history-tab",
   historyPanel: "pv-history-panel",
   historyLoadButton: "pv-history-load-button",
+  historyClearButton: "pv-history-clear-button",
   historyCreatedAt: "pv-history-created-at",
   historyRenderedOutput: "pv-history-rendered-output",
   renderedOutput: "pv-rendered-output",

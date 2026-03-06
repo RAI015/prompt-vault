@@ -1809,21 +1809,21 @@ export const PromptVaultClient = ({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={clearCopyHistory}
-                              data-pv={PV_SELECTORS.historyClearButton}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              履歴クリア
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
                               onClick={loadCopyHistory}
                               data-pv={PV_SELECTORS.historyLoadButton}
                               disabled={!copyHistory}
                             >
                               <History className="mr-2 h-4 w-4" />
                               ロード
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={clearCopyHistory}
+                              data-pv={PV_SELECTORS.historyClearButton}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              履歴クリア
                             </Button>
                           </div>
                         </div>

@@ -971,6 +971,20 @@ export const PromptVaultClient = ({
     setActiveRightTab("preview");
   }, [copyHistory, normalizedHistoryValues, placeholderValues, placeholders, showToast]);
 
+  const clearCopyHistory = useCallback(() => {
+    if (!selectedPromptId) {
+      return;
+    }
+
+    try {
+      localStorage.removeItem(getCopyHistoryStorageKey(mode, selectedPromptId));
+      setCopyHistory(null);
+      showToast("履歴をクリアしました", "success");
+    } catch {
+      showToast("履歴の削除に失敗しました", "error");
+    }
+  }, [mode, selectedPromptId, showToast]);
+
   const fillPlaceholderExamples = useCallback(() => {
     setPlaceholderValues((prev) => {
       const next = { ...prev };
@@ -1791,16 +1805,27 @@ export const PromptVaultClient = ({
                           >
                             保存日時: {toRelativeDateLabel(copyHistory.createdAt)}
                           </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={loadCopyHistory}
-                            data-pv={PV_SELECTORS.historyLoadButton}
-                            disabled={!copyHistory}
-                          >
-                            <History className="mr-2 h-4 w-4" />
-                            ロード
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={loadCopyHistory}
+                              data-pv={PV_SELECTORS.historyLoadButton}
+                              disabled={!copyHistory}
+                            >
+                              <History className="mr-2 h-4 w-4" />
+                              ロード
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={clearCopyHistory}
+                              data-pv={PV_SELECTORS.historyClearButton}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              履歴クリア
+                            </Button>
+                          </div>
                         </div>
                         <ScrollArea
                           data-pv={PV_SELECTORS.historyRenderedOutput}

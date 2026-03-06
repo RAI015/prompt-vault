@@ -411,6 +411,26 @@ test.describe("Prompt Vault E2E", () => {
     await expect(input).toHaveValue(normalizedValue);
     await expect(errorLogsInput).toHaveValue("");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(normalizedValue);
+
+    await page.getByTestId(PV_SELECTORS.historyTab).click();
+    await page.getByTestId(PV_SELECTORS.historyClearButton).click();
+    await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("履歴をクリアしました");
+    await expect(page.getByTestId(PV_SELECTORS.historyPanel)).toContainText(
+      "このプロンプトの履歴はまだありません。",
+    );
+    await expect(input).toHaveValue(normalizedValue);
+    await expect(
+      page.evaluate(
+        (historyStorageKey) => window.localStorage.getItem(historyStorageKey),
+        bugHistoryStorageKey,
+      ),
+    ).resolves.toBeNull();
+
+    await page.reload();
+    await page.getByTestId(PV_SELECTORS.historyTab).click();
+    await expect(page.getByTestId(PV_SELECTORS.historyPanel)).toContainText(
+      "このプロンプトの履歴はまだありません。",
+    );
   });
 
   test("pin したプロンプトが先頭に並び、demo でも pin を切り替えられる", async ({ page }) => {

@@ -182,19 +182,31 @@ pnpm gitleaks
 
 ## 6. ⚠️ TODO（技術的負債）
 
-### RLS未対応
+### RLS最小対応
 
-現在、Supabase PostgresのRLSは未使用。代わりにアプリ側で `ownerId` チェックを強制。
+`public."Prompt"` と `public."AppUser"` では RLS を有効化済み。
+現時点では policy は未作成で、Supabase Security Advisor 上は `RLS enabled, but no policies exist` の `info` を許容状態とする。
 
-注意点: PrismaのDB直接接続では、リクエスト単位JWTがDBへ伝播せず、`auth.uid()`ベースのRLSをそのまま適用しづらいことが多い。
+この構成では `Prompt` / `AppUser` の CRUD は Supabase Data API ではなく Prisma 直結で行う。
+Prisma は `postgres` 接続で `BYPASSRLS` 前提のため、アプリ本体を止めずに exposed schema 側の公開経路を絞ることを優先している。
 
-将来RLS導入時は、以下からDBアクセス方式を再選定してください。
+注意点: Prisma の DB 直接接続では、リクエスト単位 JWT が DB へ伝播せず、`auth.uid()` ベースの RLS をそのまま適用しづらいことが多い。
+
+今回スコープ外:
+
+- `public."_prisma_migrations"` の RLS 有効化
+- `Prompt` / `AppUser` への policy 追加
+- `auth.uid()` ベースの owner policy 設計
+- `private` schema への移設
+- Prisma 接続方式の変更
+
+将来、Supabase Data API で `Prompt` / `AppUser` を直接読む要件が出た場合は、以下から DB アクセス方式を再選定する。
 
 - Supabase client（PostgREST）へ寄せる
 - Supabase Edge Functionsへ寄せる
 - PrismaにJWT伝播機構を追加（複雑）
 
-参考SQL（テーブル名は実マイグレーション結果に合わせる）:
+参考SQL（将来の本格RLS導入時。テーブル名は実マイグレーション結果に合わせる）:
 
 ```sql
 ALTER TABLE "Prompt" ENABLE ROW LEVEL SECURITY;

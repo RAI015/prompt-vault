@@ -316,6 +316,47 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
   });
 
+  test("DEMO: 新しいフロントのバージョン差分を検知して更新導線を表示する", async ({ page }) => {
+    let latestVersion = "dev";
+
+    await page.route("**/api/version*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: {
+          "cache-control": "no-store",
+        },
+        body: JSON.stringify({ version: latestVersion }),
+      });
+    });
+
+    await page.goto("/demo");
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    await expect(page.getByTestId(PV_SELECTORS.versionBanner)).toBeHidden();
+
+    latestVersion = "next-build";
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    await expect(page.getByTestId(PV_SELECTORS.versionBanner)).toBeVisible();
+    await expect(page.getByTestId(PV_SELECTORS.versionBanner)).toContainText(
+      "新しいバージョンがあります。",
+    );
+
+    const navigationRequest = page.waitForRequest((request) => {
+      if (!request.isNavigationRequest()) {
+        return false;
+      }
+      return new URL(request.url()).pathname === "/demo";
+    });
+
+    await page.getByTestId(PV_SELECTORS.versionReloadButton).click();
+    await navigationRequest;
+    await expect(page.getByTestId(PV_SELECTORS.previewTab)).toBeVisible();
+  });
+
   test("DEMO: コピー履歴を保存・ロードでき、正規化とリロード保持が効く", async ({ page }) => {
     const bugPromptTitle = "BUG切り分けテンプレ（最初の10分）";
     const configPromptTitle = "CONFIG：キー/設定どこ？（場所・手順）";

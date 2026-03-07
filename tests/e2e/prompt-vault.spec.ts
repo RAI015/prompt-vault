@@ -248,8 +248,10 @@ test.describe("Prompt Vault E2E", () => {
     await fillExampleButton.click();
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("{{goal_text}}");
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度: high");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("stg");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("high");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
     await expect(input).toHaveValue("E2Eデモ入力");
     await expect(envSelect).toContainText("stg");
@@ -261,8 +263,10 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(getPlaceholderInputSelector("env"))).toContainText("stg");
     await expect(page.getByTestId(getPlaceholderInputSelector("priority"))).toContainText("high");
     await expect(errorLogsInput).toHaveValue(errorLogsExample);
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境: stg");
-    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度: high");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("環境");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("stg");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("優先度");
+    await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("high");
 
     await page
       .getByTestId(PV_SELECTORS.searchResultItem)

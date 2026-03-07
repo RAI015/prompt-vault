@@ -534,7 +534,7 @@ test.describe("Prompt Vault E2E", () => {
     await page.goto("/demo");
 
     const demoItems = page.getByTestId(PV_SELECTORS.searchResultItem);
-    await expect(demoItems).toHaveCount(6);
+    await expect(demoItems).toHaveCount(10);
     await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
 
     const demoFirstTitleBefore = await demoItems.nth(0).textContent();

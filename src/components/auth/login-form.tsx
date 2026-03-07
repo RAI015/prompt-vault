@@ -2,10 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/error-text";
+import { GitHubIcon } from "@/components/ui/github-icon";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { createClient } from "@/lib/supabase/client";
 import { emailPasswordSchema } from "@/schemas/auth";
+import { Mail } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -109,22 +111,27 @@ export const LoginForm = ({ initialError }: { initialError?: string }) => {
           <ErrorText>{fieldErrors.password}</ErrorText>
         </div>
 
-        <Button className="w-full" type="submit" disabled={isPending}>
-          {isPending ? <Spinner /> : null}
-          <span className="ml-2">メールでログイン</span>
+        <Button className="w-full gap-2" type="submit" disabled={isPending}>
+          {isPending ? (
+            <Spinner />
+          ) : (
+            <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
+          )}
+          <span>メールでログイン</span>
         </Button>
       </form>
 
       <div className="my-6 h-px bg-border" />
 
       <Button
-        className="w-full"
+        className="w-full gap-2"
         variant="outline"
         type="button"
         onClick={onGithubLogin}
         disabled={isPending}
       >
-        GitHubでログイン
+        <GitHubIcon className="h-4 w-4 shrink-0" />
+        <span>GitHubでログイン</span>
       </Button>
 
       <div className="my-6 h-px bg-border" />

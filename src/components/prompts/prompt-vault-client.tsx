@@ -107,6 +107,7 @@ const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
 const SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX = "pv:selectedPromptId:";
 const COPY_HISTORY_STORAGE_KEY_PREFIX = "pv:copyHistory:";
 const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
+const DEMO_MAX_PINNED_PROMPTS = 6;
 const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
@@ -172,6 +173,58 @@ type CopyHistoryEntry = {
 
 const getCopyHistoryStorageKey = (mode: PromptVaultMode, promptId: string): string => {
   return `${COPY_HISTORY_STORAGE_KEY_PREFIX}${mode}:${promptId}`;
+};
+
+const normalizePinnedPromptIds = (ids: string[], maxPinnedPrompts: number): string[] => {
+  const uniqueIds: string[] = [];
+  for (const id of ids) {
+    if (uniqueIds.includes(id)) {
+      continue;
+    }
+    uniqueIds.push(id);
+    if (uniqueIds.length >= maxPinnedPrompts) {
+      break;
+    }
+  }
+  return uniqueIds;
+};
+
+const resolveDemoPinnedIdsFromStorage = (value: unknown, maxPinnedPrompts: number): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const validIds = value.filter((entry): entry is string => typeof entry === "string");
+  return normalizePinnedPromptIds(validIds, maxPinnedPrompts);
+};
+
+const computeNextPinnedIds = (
+  currentPinnedIds: string[],
+  toggledPromptId: string,
+  isCurrentlyPinned: boolean,
+  maxPinnedPrompts: number,
+): string[] => {
+  const normalizedCurrent = normalizePinnedPromptIds(currentPinnedIds, maxPinnedPrompts);
+  if (isCurrentlyPinned) {
+    return normalizedCurrent.filter((id) => id !== toggledPromptId);
+  }
+
+  const nextPinnedIds = normalizedCurrent.filter((id) => id !== toggledPromptId);
+  if (nextPinnedIds.length >= maxPinnedPrompts) {
+    nextPinnedIds.shift();
+  }
+  nextPinnedIds.push(toggledPromptId);
+  return nextPinnedIds;
+};
+
+const applyPinnedStateToPrompts = (prompts: PromptLike[], pinnedIds: string[]): PromptLike[] => {
+  const baseTime = Date.UTC(2000, 0, 1, 0, 0, 0, 0);
+  const pinnedAtById = new Map(
+    pinnedIds.map((id, index) => [id, new Date(baseTime + index)] as const),
+  );
+  return prompts.map((prompt) => ({
+    ...prompt,
+    pinnedAt: pinnedAtById.get(prompt.id) ?? null,
+  }));
 };
 
 const normalizeValuesByPlaceholders = (
@@ -240,7 +293,7 @@ const sortPromptsByPinnedAt = (
 ): PromptLike[] => {
   return [...prompts].sort((left, right) => {
     if (left.pinnedAt && right.pinnedAt) {
-      const pinnedAtDiff = left.pinnedAt.getTime() - right.pinnedAt.getTime();
+      const pinnedAtDiff = right.pinnedAt.getTime() - left.pinnedAt.getTime();
       if (pinnedAtDiff !== 0) {
         return pinnedAtDiff;
       }
@@ -506,19 +559,16 @@ export const PromptVaultClient = ({
 
     try {
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
+      const pinnedIds = resolveDemoPinnedIdsFromStorage(parsed, DEMO_MAX_PINNED_PROMPTS);
+      if (pinnedIds.length === 0) {
         localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
-        setPrompts(sortPromptsByPinnedAt(initialPrompts, promptOrderMap));
-        return;
+      } else {
+        const serializedPinnedIds = JSON.stringify(pinnedIds);
+        if (serializedPinnedIds !== raw) {
+          localStorage.setItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY, serializedPinnedIds);
+        }
       }
-
-      const pinnedIds = new Set(
-        parsed.filter((value): value is string => typeof value === "string"),
-      );
-      const nextPrompts = initialPrompts.map((prompt) => ({
-        ...prompt,
-        pinnedAt: pinnedIds.has(prompt.id) ? new Date(0) : null,
-      }));
+      const nextPrompts = applyPinnedStateToPrompts(initialPrompts, pinnedIds);
       setPrompts(sortPromptsByPinnedAt(nextPrompts, promptOrderMap));
     } catch {
       localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
@@ -903,23 +953,29 @@ export const PromptVaultClient = ({
   const togglePin = (promptId: string) => {
     if (isDemo) {
       setPrompts((prev) => {
-        const nextPrompts = prev.map((prompt) =>
-          prompt.id === promptId
-            ? {
-                ...prompt,
-                pinnedAt: prompt.pinnedAt ? null : new Date(0),
-              }
-            : prompt,
-        );
+        const targetPrompt = prev.find((prompt) => prompt.id === promptId);
+        if (!targetPrompt) {
+          return prev;
+        }
 
-        const pinnedPromptIds = nextPrompts
+        const currentPinnedIds = prev
           .filter((prompt) => prompt.pinnedAt !== null)
+          .sort((left, right) => {
+            return (left.pinnedAt?.getTime() ?? 0) - (right.pinnedAt?.getTime() ?? 0);
+          })
           .map((prompt) => prompt.id);
+        const nextPinnedIds = computeNextPinnedIds(
+          currentPinnedIds,
+          promptId,
+          targetPrompt.pinnedAt !== null,
+          DEMO_MAX_PINNED_PROMPTS,
+        );
+        const nextPrompts = applyPinnedStateToPrompts(prev, nextPinnedIds);
 
-        if (pinnedPromptIds.length === 0) {
+        if (nextPinnedIds.length === 0) {
           localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
         } else {
-          localStorage.setItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY, JSON.stringify(pinnedPromptIds));
+          localStorage.setItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY, JSON.stringify(nextPinnedIds));
         }
 
         return sortPromptsByPinnedAt(nextPrompts, promptOrderMap);

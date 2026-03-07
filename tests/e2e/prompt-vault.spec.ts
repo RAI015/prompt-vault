@@ -559,4 +559,56 @@ test.describe("Prompt Vault E2E", () => {
     await page.reload();
     await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
   });
+
+  test("DEMO: pin は最大6件で、7件目は最古のpinが外れる", async ({ page }) => {
+    const oldestPinnedId = "demo-bug-triage";
+    const newPinnedId = "demo-playwright-e2e-add-request";
+    const seededPinnedIds = [
+      "demo-bug-triage",
+      "demo-e2e-fail",
+      "demo-prisma-migration-investigation",
+      "demo-post-deploy-check",
+      "demo-postmortem-organize",
+      "demo-codex-impl-request",
+    ];
+
+    await page.goto("/demo");
+    await expect(page.getByTestId(PV_SELECTORS.searchResultItem)).toHaveCount(10);
+    await page.evaluate(() => {
+      window.localStorage.removeItem("pv:demoPinnedPromptIds");
+    });
+    await page.evaluate((pinnedIds) => {
+      window.localStorage.setItem("pv:demoPinnedPromptIds", JSON.stringify(pinnedIds));
+    }, seededPinnedIds);
+    await page.reload();
+    await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
+    await page
+      .getByTestId(PV_SELECTORS.searchResultItem)
+      .filter({ hasText: "Playwrightテスト追加依頼テンプレ（新規E2E）" })
+      .getByTestId(PV_SELECTORS.searchResultPinButton)
+      .click();
+
+    await expect
+      .poll(async () => {
+        return page.evaluate((targetId) => {
+          const raw = window.localStorage.getItem("pv:demoPinnedPromptIds");
+          if (!raw) return false;
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return false;
+          return parsed.length === 6 && !parsed.includes(targetId);
+        }, oldestPinnedId);
+      })
+      .toBe(true);
+    await expect
+      .poll(async () => {
+        return page.evaluate((targetId) => {
+          const raw = window.localStorage.getItem("pv:demoPinnedPromptIds");
+          if (!raw) return false;
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return false;
+          return parsed.includes(targetId);
+        }, newPinnedId);
+      })
+      .toBe(true);
+  });
 });

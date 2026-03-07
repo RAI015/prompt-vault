@@ -316,8 +316,18 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
   });
 
-  test("DEMO: 新しいフロントのバージョン差分を検知して更新導線を表示する", async ({ page }) => {
+  test("DEMO: 新しいフロントのバージョン差分を検知して更新導線を表示する", async ({
+    page,
+  }) => {
     let latestVersion = "dev";
+
+    await page.addInitScript(() => {
+      const originalSetInterval = window.setInterval.bind(window);
+      window.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+        const nextTimeout = timeout === 5 * 60 * 1000 ? 50 : timeout;
+        return originalSetInterval(handler, nextTimeout, ...args);
+      }) as typeof window.setInterval;
+    });
 
     await page.route("**/api/version*", async (route) => {
       await route.fulfill({
@@ -338,9 +348,6 @@ test.describe("Prompt Vault E2E", () => {
     latestVersion = "next-build";
     const versionResponse = page.waitForResponse((response) => {
       return new URL(response.url()).pathname === "/api/version";
-    });
-    await page.evaluate(() => {
-      window.dispatchEvent(new Event("focus"));
     });
     await versionResponse;
 

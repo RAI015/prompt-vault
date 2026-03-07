@@ -112,11 +112,7 @@ export const LoginForm = ({ initialError }: { initialError?: string }) => {
         </div>
 
         <Button className="w-full gap-2" type="submit" disabled={isPending}>
-          {isPending ? (
-            <Spinner />
-          ) : (
-            <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
-          )}
+          {isPending ? <Spinner /> : <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />}
           <span>メールでログイン</span>
         </Button>
       </form>

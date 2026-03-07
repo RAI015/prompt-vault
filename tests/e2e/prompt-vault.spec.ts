@@ -336,9 +336,13 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.versionBanner)).toBeHidden();
 
     latestVersion = "next-build";
+    const versionResponse = page.waitForResponse((response) => {
+      return new URL(response.url()).pathname === "/api/version";
+    });
     await page.evaluate(() => {
       window.dispatchEvent(new Event("focus"));
     });
+    await versionResponse;
 
     await expect(page.getByTestId(PV_SELECTORS.versionBanner)).toBeVisible();
     await expect(page.getByTestId(PV_SELECTORS.versionBanner)).toContainText(

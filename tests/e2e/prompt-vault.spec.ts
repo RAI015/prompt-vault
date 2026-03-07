@@ -316,9 +316,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByRole("button", { name: "保存" })).toHaveCount(0);
   });
 
-  test("DEMO: 新しいフロントのバージョン差分を検知して更新導線を表示する", async ({
-    page,
-  }) => {
+  test("DEMO: 新しいフロントのバージョン差分を検知して更新導線を表示する", async ({ page }) => {
     let latestVersion = "dev";
 
     await page.addInitScript(() => {

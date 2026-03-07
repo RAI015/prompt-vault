@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { PromptVaultClient } from "@/components/prompts/prompt-vault-client";
+import { getFrontendVersion } from "@/lib/frontend-version";
 import { error } from "@/lib/log";
 import { syncCurrentAppUser } from "@/server/services/auth-service";
 import { listMyPrompts } from "@/server/services/prompt-service";
@@ -39,7 +40,12 @@ const PromptsPage = async () => {
     );
   }
 
-  return <PromptVaultClient initialPrompts={promptsResult.data} />;
+  return (
+    <PromptVaultClient
+      initialPrompts={promptsResult.data}
+      initialFrontendVersion={getFrontendVersion()}
+    />
+  );
 };
 
 export default PromptsPage;

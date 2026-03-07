@@ -107,6 +107,7 @@ const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
 const SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX = "pv:selectedPromptId:";
 const COPY_HISTORY_STORAGE_KEY_PREFIX = "pv:copyHistory:";
 const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
+const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
 const MAX_LEFT_PANE_WIDTH = 520;
@@ -378,9 +379,11 @@ const useResizablePane = ({
 export const PromptVaultClient = ({
   initialPrompts,
   mode = "app",
+  initialFrontendVersion,
 }: {
   initialPrompts: PromptLike[];
   mode?: PromptVaultMode;
+  initialFrontendVersion: string;
 }) => {
   const isDemo = mode === "demo";
   const homeHref = isDemo ? "/demo" : "/app/prompts";
@@ -410,6 +413,7 @@ export const PromptVaultClient = ({
   const [activeRightTab, setActiveRightTab] = useState<"preview" | "history">("preview");
   const [copyHistory, setCopyHistory] = useState<CopyHistoryEntry | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [hasUpdateAvailable, setHasUpdateAvailable] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -436,6 +440,58 @@ export const PromptVaultClient = ({
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (hasUpdateAvailable) {
+      return;
+    }
+
+    let isDisposed = false;
+
+    const checkFrontendVersion = async () => {
+      try {
+        const response = await fetch(`/api/version?ts=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            pragma: "no-cache",
+          },
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { version?: unknown };
+        if (isDisposed || typeof payload.version !== "string") {
+          return;
+        }
+        if (payload.version !== initialFrontendVersion) {
+          setHasUpdateAvailable(true);
+        }
+      } catch {
+        // 更新確認はベストエフォートとし、失敗時は通知を出さない。
+      }
+    };
+
+    const intervalId = window.setInterval(checkFrontendVersion, VERSION_CHECK_INTERVAL_MS);
+    const onWindowFocus = () => {
+      void checkFrontendVersion();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void checkFrontendVersion();
+      }
+    };
+
+    window.addEventListener("focus", onWindowFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      isDisposed = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onWindowFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [hasUpdateAvailable, initialFrontendVersion]);
 
   useEffect(() => {
     if (!isDemo) {
@@ -1349,6 +1405,23 @@ export const PromptVaultClient = ({
           </span>
         )}
         <div className="flex items-center gap-2">
+          <div
+            data-pv={PV_SELECTORS.versionBanner}
+            className={cn(
+              "items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-900 shadow-sm dark:text-amber-200",
+              hasUpdateAvailable ? "flex" : "hidden",
+            )}
+          >
+            <p>新しいバージョンがあります。</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.reload()}
+              data-pv={PV_SELECTORS.versionReloadButton}
+            >
+              更新する
+            </Button>
+          </div>
           {isDemo ? (
             <Link href="/login" className={buttonVariants({ variant: "outline" })}>
               ログインして使う

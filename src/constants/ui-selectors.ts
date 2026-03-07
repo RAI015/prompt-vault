@@ -25,6 +25,8 @@ export const PV_SELECTORS = {
   historyCreatedAt: "pv-history-created-at",
   historyRenderedOutput: "pv-history-rendered-output",
   renderedOutput: "pv-rendered-output",
+  versionBanner: "pv-version-banner",
+  versionReloadButton: "pv-version-reload-button",
   toastSuccess: "pv-toast-success",
   toastError: "pv-toast-error",
   splitterHandle: "pv-splitter-handle",

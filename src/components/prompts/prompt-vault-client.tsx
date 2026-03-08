@@ -1,7 +1,29 @@
 "use client";
 
 import iconSrc from "@/app/icon.png";
+import { useResizablePane } from "@/components/prompts/hooks/use-resizable-pane";
 import { getPlaceholderFieldSchema } from "@/components/prompts/placeholder-field-schema";
+import { PromptPlaceholderField } from "@/components/prompts/prompt-placeholder-field";
+import type {
+  CopyHistoryEntry,
+  PromptInputState,
+  PromptLike,
+  PromptVaultMode,
+  ToastState,
+} from "@/components/prompts/prompt-vault-types";
+import {
+  SERVICE_OTHER_VALUE,
+  SERVICE_PLACEHOLDER_KEY,
+  applyPinnedStateToPrompts,
+  computeNextPinnedIds,
+  isAllPlaceholdersEmpty,
+  isRecordString,
+  normalizeValuesByPlaceholders,
+  resolveDemoPinnedIdsFromStorage,
+  sortPromptsByPinnedAt,
+  toAbsoluteDateLabel,
+  toRelativeDateLabel,
+} from "@/components/prompts/prompt-vault-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,23 +46,10 @@ import {
 import { ErrorText } from "@/components/ui/error-text";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  PV_SELECTORS,
-  getPlaceholderInputSelector,
-  getPlaceholderLogActionSelector,
-  getPlaceholderLogLineCountSelector,
-  getToastSelector,
-} from "@/constants/ui-selectors";
+import { PV_SELECTORS, getToastSelector } from "@/constants/ui-selectors";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { parseTagCsv, promptSchema } from "@/schemas/prompt";
@@ -51,7 +60,6 @@ import {
   updatePromptAction,
 } from "@/server/actions/prompt-actions";
 import { PLACEHOLDER_REGEX, extractPlaceholders, renderTemplate } from "@/utils/placeholder";
-import type { Prompt } from "@prisma/client";
 import {
   Braces,
   Copy,
@@ -79,28 +87,12 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 
-type PromptInputState = {
-  title: string;
-  body: string;
-  tagsCsv: string;
-};
-
 const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
   title: prompt?.title ?? "",
   body: prompt?.body ?? "",
   tagsCsv: prompt?.tags.join(", ") ?? "",
 });
 
-const LONGTEXT_SUFFIXES = ["logs", "text", "details", "content", "body", "notes"] as const;
-const LONGTEXT_RE = new RegExp(`(^|_)(${LONGTEXT_SUFFIXES.join("|")})($|_)`, "i");
-
-const isLongTextPlaceholder = (key: string): boolean => LONGTEXT_RE.test(key);
-
-const isLogsPlaceholder = (key: string): boolean => {
-  return key.toLowerCase().endsWith("_logs");
-};
-
-const LOG_TRIM_LINE_COUNT = 50;
 const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
 const PLACEHOLDER_PANE_WIDTH_KEY = "pv:placeholderPaneWidthPx";
 const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
@@ -115,37 +107,6 @@ const MAX_LEFT_PANE_WIDTH = 520;
 const DEFAULT_PLACEHOLDER_PANE_WIDTH = 360;
 const MIN_PLACEHOLDER_PANE_WIDTH = 280;
 const MAX_PLACEHOLDER_PANE_WIDTH = 560;
-const SERVICE_PLACEHOLDER_KEY = "service";
-const SERVICE_OTHER_VALUE = "other";
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-const splitLines = (value: string): string[] => {
-  if (!value) {
-    return [];
-  }
-  return value.split(/\r?\n/);
-};
-
-const toHeadLines = (value: string, lineCount: number): string => {
-  return splitLines(value).slice(0, lineCount).join("\n");
-};
-
-const toTailLines = (value: string, lineCount: number): string => {
-  const lines = splitLines(value);
-  return lines.slice(Math.max(0, lines.length - lineCount)).join("\n");
-};
-
-const toHeadTailLines = (value: string, lineCount: number): string => {
-  const lines = splitLines(value);
-  if (lines.length <= lineCount * 2) {
-    return value;
-  }
-  const omitted = lines.length - lineCount * 2;
-  const head = lines.slice(0, lineCount);
-  const tail = lines.slice(lines.length - lineCount);
-  return [...head, `... (${omitted} lines omitted) ...`, ...tail].join("\n");
-};
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) {
@@ -158,275 +119,8 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 };
 
-type ToastState = {
-  message: string;
-  variant: "success" | "error";
-};
-
-type PromptLike = Pick<Prompt, "id" | "title" | "tags" | "body" | "pinnedAt">;
-type PromptVaultMode = "app" | "demo";
-type CopyHistoryEntry = {
-  createdAt: string;
-  title: string;
-  values: Record<string, string>;
-};
-
 const getCopyHistoryStorageKey = (mode: PromptVaultMode, promptId: string): string => {
   return `${COPY_HISTORY_STORAGE_KEY_PREFIX}${mode}:${promptId}`;
-};
-
-const normalizePinnedPromptIds = (ids: string[], maxPinnedPrompts: number): string[] => {
-  const uniqueIds: string[] = [];
-  for (const id of ids) {
-    if (uniqueIds.includes(id)) {
-      continue;
-    }
-    uniqueIds.push(id);
-    if (uniqueIds.length >= maxPinnedPrompts) {
-      break;
-    }
-  }
-  return uniqueIds;
-};
-
-const resolveDemoPinnedIdsFromStorage = (value: unknown, maxPinnedPrompts: number): string[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const validIds = value.filter((entry): entry is string => typeof entry === "string");
-  return normalizePinnedPromptIds(validIds, maxPinnedPrompts);
-};
-
-const computeNextPinnedIds = (
-  currentPinnedIds: string[],
-  toggledPromptId: string,
-  isCurrentlyPinned: boolean,
-  maxPinnedPrompts: number,
-): string[] => {
-  const normalizedCurrent = normalizePinnedPromptIds(currentPinnedIds, maxPinnedPrompts);
-  if (isCurrentlyPinned) {
-    return normalizedCurrent.filter((id) => id !== toggledPromptId);
-  }
-
-  const nextPinnedIds = normalizedCurrent.filter((id) => id !== toggledPromptId);
-  if (nextPinnedIds.length >= maxPinnedPrompts) {
-    nextPinnedIds.shift();
-  }
-  nextPinnedIds.push(toggledPromptId);
-  return nextPinnedIds;
-};
-
-const applyPinnedStateToPrompts = (prompts: PromptLike[], pinnedIds: string[]): PromptLike[] => {
-  const baseTime = Date.UTC(2000, 0, 1, 0, 0, 0, 0);
-  const pinnedAtById = new Map(
-    pinnedIds.map((id, index) => [id, new Date(baseTime + index)] as const),
-  );
-  return prompts.map((prompt) => ({
-    ...prompt,
-    pinnedAt: pinnedAtById.get(prompt.id) ?? null,
-  }));
-};
-
-const normalizeValuesByPlaceholders = (
-  keys: string[],
-  values: Record<string, string>,
-): Record<string, string> => {
-  return Object.fromEntries(keys.map((key) => [key, values[key] ?? ""]));
-};
-
-const isAllPlaceholdersEmpty = (keys: string[], values: Record<string, string>): boolean => {
-  return keys.every((key) => (values[key] ?? "").trim().length === 0);
-};
-
-const isRecordString = (value: unknown): value is Record<string, string> => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  return Object.values(value).every((entry) => typeof entry === "string");
-};
-
-const toAbsoluteDateLabel = (isoDate: string): string => {
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) {
-    return isoDate;
-  }
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(date);
-};
-
-const toRelativeDateLabel = (isoDate: string): string => {
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) {
-    return "日時不明";
-  }
-  const rawDiffMs = date.getTime() - Date.now();
-  // 履歴用途では未来時刻を0に丸め、過去経過だけを表示する。
-  const pastDiffMs = Math.min(rawDiffMs, 0);
-  const elapsedSeconds = Math.floor(Math.abs(pastDiffMs) / 1000);
-  const rtf = new Intl.RelativeTimeFormat("ja", { numeric: "auto" });
-
-  if (elapsedSeconds < 60) {
-    return "0分前";
-  }
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-  if (elapsedMinutes < 60) {
-    return rtf.format(-elapsedMinutes, "minute");
-  }
-  const elapsedHours = Math.floor(elapsedMinutes / 60);
-  if (elapsedHours < 24) {
-    return rtf.format(-elapsedHours, "hour");
-  }
-  const elapsedDays = Math.floor(elapsedHours / 24);
-  return rtf.format(-elapsedDays, "day");
-};
-
-const sortPromptsByPinnedAt = (
-  prompts: PromptLike[],
-  orderMap: Map<string, number>,
-): PromptLike[] => {
-  return [...prompts].sort((left, right) => {
-    if (left.pinnedAt && right.pinnedAt) {
-      const pinnedAtDiff = right.pinnedAt.getTime() - left.pinnedAt.getTime();
-      if (pinnedAtDiff !== 0) {
-        return pinnedAtDiff;
-      }
-      return (
-        (orderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-      );
-    }
-    if (left.pinnedAt) {
-      return -1;
-    }
-    if (right.pinnedAt) {
-      return 1;
-    }
-
-    return (
-      (orderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-      (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-    );
-  });
-};
-
-const useResizablePane = ({
-  storageKey,
-  defaultWidth,
-  minWidth,
-  maxWidth,
-}: {
-  storageKey: string;
-  defaultWidth: number;
-  minWidth: number;
-  maxWidth: number;
-}) => {
-  const [width, setWidth] = useState<number>(defaultWidth);
-  const widthRef = useRef<number>(defaultWidth);
-  const dragStateRef = useRef<{
-    isDragging: boolean;
-    pointerId: number | null;
-    startX: number;
-    startWidth: number;
-  }>({
-    isDragging: false,
-    pointerId: null,
-    startX: 0,
-    startWidth: defaultWidth,
-  });
-
-  useEffect(() => {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return;
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed)) {
-      const nextWidth = clamp(parsed, minWidth, maxWidth);
-      widthRef.current = nextWidth;
-      setWidth(nextWidth);
-    }
-  }, [maxWidth, minWidth, storageKey]);
-
-  useEffect(() => {
-    widthRef.current = width;
-  }, [width]);
-
-  const finishDragging = useCallback(
-    (finalWidth?: number) => {
-      if (!dragStateRef.current.isDragging) return;
-      dragStateRef.current.isDragging = false;
-      dragStateRef.current.pointerId = null;
-
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-
-      const widthToSave = clamp(finalWidth ?? widthRef.current, minWidth, maxWidth);
-      widthRef.current = widthToSave;
-      setWidth(widthToSave);
-      localStorage.setItem(storageKey, String(widthToSave));
-    },
-    [maxWidth, minWidth, storageKey],
-  );
-
-  const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-
-    dragStateRef.current = {
-      isDragging: true,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startWidth: widthRef.current,
-    };
-
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }, []);
-
-  useEffect(() => {
-    const onPointerMove = (event: PointerEvent) => {
-      if (!dragStateRef.current.isDragging) return;
-      if (dragStateRef.current.pointerId !== event.pointerId) return;
-      const delta = event.clientX - dragStateRef.current.startX;
-      const nextWidth = clamp(dragStateRef.current.startWidth + delta, minWidth, maxWidth);
-      widthRef.current = nextWidth;
-      setWidth(nextWidth);
-    };
-
-    const onPointerUp = (event: PointerEvent) => {
-      if (!dragStateRef.current.isDragging) return;
-      if (dragStateRef.current.pointerId !== event.pointerId) return;
-      const delta = event.clientX - dragStateRef.current.startX;
-      const finalWidth = clamp(dragStateRef.current.startWidth + delta, minWidth, maxWidth);
-      finishDragging(finalWidth);
-    };
-
-    const onPointerCancel = (event: PointerEvent) => {
-      if (dragStateRef.current.pointerId !== event.pointerId) return;
-      finishDragging();
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerCancel);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerCancel);
-      dragStateRef.current.isDragging = false;
-      dragStateRef.current.pointerId = null;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [finishDragging, maxWidth, minWidth]);
-
-  return { width, onPointerDown };
 };
 
 export const PromptVaultClient = ({
@@ -1199,248 +893,6 @@ export const PromptVaultClient = ({
 
     return (placeholderValues[key] ?? "").trim().length === 0;
   });
-  const renderPlaceholderField = (key: string) => {
-    const schema = getPlaceholderFieldSchema(key);
-    const isLongText = !schema && isLongTextPlaceholder(key);
-    const label = schema?.label ?? `{{${key}}}`;
-    const placeholderText = schema?.placeholder ?? (isLongText ? "複数行の入力に対応" : "値を入力");
-
-    if (schema?.type === "select") {
-      if (key === SERVICE_PLACEHOLDER_KEY) {
-        const presetOptions = schema.options.filter((option) => option !== SERVICE_OTHER_VALUE);
-        const serviceValue = placeholderValues[key] ?? "";
-        const selectValue = presetOptions.includes(serviceValue) ? serviceValue : "";
-
-        if (serviceInputMode === "custom") {
-          return (
-            <div key={key} className="space-y-1">
-              <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
-                {label}
-              </label>
-              <div className="space-y-2">
-                <Input
-                  id={`placeholder-${key}`}
-                  data-pv={getPlaceholderInputSelector(key)}
-                  placeholder="サービス名を入力"
-                  value={serviceValue}
-                  onFocus={() => setActivePlaceholderKey(key)}
-                  onBlur={() => setActivePlaceholderKey(null)}
-                  onChange={(event) =>
-                    setPlaceholderValues((prev) => ({
-                      ...prev,
-                      [key]: event.target.value,
-                    }))
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setServiceInputMode("preset");
-                    setPlaceholderValues((prev) => ({
-                      ...prev,
-                      [key]: "",
-                    }));
-                  }}
-                >
-                  選択に戻る
-                </Button>
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <div key={key} className="space-y-1">
-            <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
-              {label}
-            </label>
-            <Select
-              value={selectValue}
-              onOpenChange={(open) => setActivePlaceholderKey(open ? key : null)}
-              onValueChange={(value) => {
-                if (value === SERVICE_OTHER_VALUE) {
-                  setServiceInputMode("custom");
-                  setPlaceholderValues((prev) => ({
-                    ...prev,
-                    [key]: "",
-                  }));
-                  return;
-                }
-
-                setServiceInputMode("preset");
-                setPlaceholderValues((prev) => ({
-                  ...prev,
-                  [key]: value,
-                }));
-              }}
-            >
-              <SelectTrigger id={`placeholder-${key}`} data-pv={getPlaceholderInputSelector(key)}>
-                <SelectValue placeholder="選択してください" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SERVICE_OTHER_VALUE}>other（その他）</SelectItem>
-                {presetOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-      }
-
-      return (
-        <div key={key} className="space-y-1">
-          <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
-            {label}
-          </label>
-          <Select
-            value={placeholderValues[key] ?? ""}
-            onOpenChange={(open) => setActivePlaceholderKey(open ? key : null)}
-            onValueChange={(value) =>
-              setPlaceholderValues((prev) => ({
-                ...prev,
-                [key]: value,
-              }))
-            }
-          >
-            <SelectTrigger id={`placeholder-${key}`} data-pv={getPlaceholderInputSelector(key)}>
-              <SelectValue placeholder="選択してください" />
-            </SelectTrigger>
-            <SelectContent>
-              {schema.options.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      );
-    }
-
-    return (
-      <div key={key} className="space-y-1">
-        <label className="text-sm font-medium" htmlFor={`placeholder-${key}`}>
-          {label}
-        </label>
-        {isLongText || schema?.type === "longText" ? (
-          <div className="space-y-2">
-            <Textarea
-              id={`placeholder-${key}`}
-              data-pv={getPlaceholderInputSelector(key)}
-              rows={6}
-              className="resize-y font-mono"
-              placeholder={placeholderText}
-              value={placeholderValues[key] ?? ""}
-              onFocus={() => setActivePlaceholderKey(key)}
-              onBlur={() => setActivePlaceholderKey(null)}
-              onChange={(event) =>
-                setPlaceholderValues((prev) => ({
-                  ...prev,
-                  [key]: event.target.value,
-                }))
-              }
-            />
-            {isLogsPlaceholder(key) ? (
-              <div className="space-y-2">
-                <p
-                  className="text-xs text-muted-foreground"
-                  data-pv={getPlaceholderLogLineCountSelector(key)}
-                >
-                  行数: {splitLines(placeholderValues[key] ?? "").length}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={fillPlaceholderExamples}
-                    disabled={!canFillPlaceholderExamples}
-                    title="空欄のうち、サンプルが定義されている項目だけ埋めます"
-                    data-pv={PV_SELECTORS.fillPlaceholderExamplesButton}
-                  >
-                    空欄にサンプル
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    data-pv={getPlaceholderLogActionSelector(key, "head")}
-                    title={`先頭から${LOG_TRIM_LINE_COUNT}行だけ残します`}
-                    onClick={() =>
-                      applyErrorLogsTransform(key, (value) =>
-                        toHeadLines(value, LOG_TRIM_LINE_COUNT),
-                      )
-                    }
-                  >
-                    先頭{LOG_TRIM_LINE_COUNT}行
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    data-pv={getPlaceholderLogActionSelector(key, "tail")}
-                    title={`末尾から${LOG_TRIM_LINE_COUNT}行だけ残します`}
-                    onClick={() =>
-                      applyErrorLogsTransform(key, (value) =>
-                        toTailLines(value, LOG_TRIM_LINE_COUNT),
-                      )
-                    }
-                  >
-                    末尾{LOG_TRIM_LINE_COUNT}行
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    data-pv={getPlaceholderLogActionSelector(key, "head-tail")}
-                    title={`先頭${LOG_TRIM_LINE_COUNT}行と末尾${LOG_TRIM_LINE_COUNT}行だけ残します`}
-                    onClick={() =>
-                      applyErrorLogsTransform(key, (value) =>
-                        toHeadTailLines(value, LOG_TRIM_LINE_COUNT),
-                      )
-                    }
-                  >
-                    先頭+末尾
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    data-pv={getPlaceholderLogActionSelector(key, "undo")}
-                    title="直前の短縮を取り消します"
-                    onClick={() => restoreErrorLogsValue(key)}
-                    disabled={placeholderUndoValues[key] === undefined}
-                  >
-                    元に戻す
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <Input
-            id={`placeholder-${key}`}
-            data-pv={getPlaceholderInputSelector(key)}
-            placeholder={placeholderText}
-            value={placeholderValues[key] ?? ""}
-            onFocus={() => setActivePlaceholderKey(key)}
-            onBlur={() => setActivePlaceholderKey(null)}
-            onChange={(event) =>
-              setPlaceholderValues((prev) => ({
-                ...prev,
-                [key]: event.target.value,
-              }))
-            }
-          />
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="h-screen overflow-hidden">
@@ -1796,7 +1248,22 @@ export const PromptVaultClient = ({
                       </p>
                       <ScrollArea className="mt-3 min-h-0 flex-1 pr-3">
                         <div className="space-y-3">
-                          {placeholders.map((key) => renderPlaceholderField(key))}
+                          {placeholders.map((key) => (
+                            <PromptPlaceholderField
+                              key={key}
+                              placeholderKey={key}
+                              placeholderValues={placeholderValues}
+                              placeholderUndoValues={placeholderUndoValues}
+                              serviceInputMode={serviceInputMode}
+                              canFillPlaceholderExamples={canFillPlaceholderExamples}
+                              setActivePlaceholderKey={setActivePlaceholderKey}
+                              setPlaceholderValues={setPlaceholderValues}
+                              setServiceInputMode={setServiceInputMode}
+                              fillPlaceholderExamples={fillPlaceholderExamples}
+                              applyErrorLogsTransform={applyErrorLogsTransform}
+                              restoreErrorLogsValue={restoreErrorLogsValue}
+                            />
+                          ))}
                         </div>
                       </ScrollArea>
                     </>

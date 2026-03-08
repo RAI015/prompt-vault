@@ -1,6 +1,7 @@
 "use client";
 
 import iconSrc from "@/app/icon.png";
+import { usePromptCrud } from "@/components/prompts/hooks/use-prompt-crud";
 import { usePromptVaultPersistence } from "@/components/prompts/hooks/use-prompt-vault-persistence";
 import { useResizablePane } from "@/components/prompts/hooks/use-resizable-pane";
 import { getPlaceholderFieldSchema } from "@/components/prompts/placeholder-field-schema";
@@ -15,13 +16,10 @@ import type {
 import {
   SERVICE_OTHER_VALUE,
   SERVICE_PLACEHOLDER_KEY,
-  applyPinnedStateToPrompts,
-  computeNextPinnedIds,
   getCopyHistoryStorageKey,
   getPlaceholderValuesStorageKey,
   isAllPlaceholdersEmpty,
   normalizeValuesByPlaceholders,
-  sortPromptsByPinnedAt,
   toAbsoluteDateLabel,
   toRelativeDateLabel,
 } from "@/components/prompts/prompt-vault-utils";
@@ -51,15 +49,8 @@ import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { PV_SELECTORS, getToastSelector } from "@/constants/ui-selectors";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { parseTagCsv, promptSchema } from "@/schemas/prompt";
-import {
-  createPromptAction,
-  deletePromptAction,
-  togglePromptPinAction,
-  updatePromptAction,
-} from "@/server/actions/prompt-actions";
 import { PLACEHOLDER_REGEX, extractPlaceholders, renderTemplate } from "@/utils/placeholder";
 import {
   Braces,
@@ -83,7 +74,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useTransition,
 } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -96,8 +86,6 @@ const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
 
 const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
 const PLACEHOLDER_PANE_WIDTH_KEY = "pv:placeholderPaneWidthPx";
-const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
-const DEMO_MAX_PINNED_PROMPTS = 6;
 const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DEFAULT_LEFT_PANE_WIDTH = 280;
 const MIN_LEFT_PANE_WIDTH = 120;
@@ -154,7 +142,6 @@ export const PromptVaultClient = ({
   const [toast, setToast] = useState<ToastState | null>(null);
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const previousSelectedPromptIdRef = useRef<string | null>(selectedPromptId);
@@ -403,6 +390,24 @@ export const PromptVaultClient = ({
     resetFormErrors();
   };
 
+  const onPromptsEmpty = useCallback(() => {
+    setSelectedPromptId(null);
+    setIsCreating(false);
+    setIsEditing(false);
+    setFormState(toPromptInputState());
+  }, []);
+
+  const { isPending, savePrompt, removePrompt, togglePin, logout } = usePromptCrud({
+    isDemo,
+    prompts,
+    promptOrderMap,
+    setPrompts,
+    setFormError,
+    setIsEditing,
+    selectPrompt,
+    onPromptsEmpty,
+  });
+
   const validateForm = (): { title: string; body: string; tags: string[] } | null => {
     const payload = {
       title: formState.title,
@@ -432,78 +437,14 @@ export const PromptVaultClient = ({
     return null;
   };
 
-  const savePrompt = () => {
+  const onSavePrompt = () => {
     if (isDemo) return;
     resetFormErrors();
     const payload = validateForm();
     if (!payload) {
       return;
     }
-
-    startTransition(async () => {
-      if (isCreating) {
-        const result = await createPromptAction(payload);
-        if (result.error) {
-          setFormError(result.error.message);
-          return;
-        }
-
-        setPrompts((prev) => [result.data, ...prev]);
-        selectPrompt(result.data);
-        return;
-      }
-
-      if (!selectedPromptId) {
-        setFormError("更新対象が選択されていません");
-        return;
-      }
-
-      const result = await updatePromptAction(selectedPromptId, payload);
-      if (result.error) {
-        setFormError(result.error.message);
-        return;
-      }
-
-      setPrompts((prev) =>
-        prev.map((prompt) => (prompt.id === selectedPromptId ? result.data : prompt)),
-      );
-      setIsEditing(false);
-      selectPrompt(result.data);
-    });
-  };
-
-  const removePrompt = (promptId: string) => {
-    if (isDemo) return;
-    setFormError("");
-
-    startTransition(async () => {
-      const result = await deletePromptAction(promptId);
-      if (result.error) {
-        setFormError(result.error.message);
-        return;
-      }
-
-      const nextPrompts = prompts.filter((prompt) => prompt.id !== promptId);
-      setPrompts(nextPrompts);
-
-      const nextSelected = nextPrompts[0] ?? null;
-      if (nextSelected) {
-        selectPrompt(nextSelected);
-      } else {
-        setSelectedPromptId(null);
-        setIsCreating(false);
-        setIsEditing(false);
-        setFormState(toPromptInputState());
-      }
-    });
-  };
-
-  const logout = () => {
-    startTransition(async () => {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      window.location.href = "/login";
-    });
+    savePrompt({ payload, isCreating, selectedPromptId });
   };
 
   const startEdit = () => {
@@ -516,52 +457,6 @@ export const PromptVaultClient = ({
     setIsCreating(false);
     setFormState(toPromptInputState(selectedPrompt));
     resetFormErrors();
-  };
-
-  const togglePin = (promptId: string) => {
-    if (isDemo) {
-      setPrompts((prev) => {
-        const targetPrompt = prev.find((prompt) => prompt.id === promptId);
-        if (!targetPrompt) {
-          return prev;
-        }
-
-        const currentPinnedIds = prev
-          .filter((prompt) => prompt.pinnedAt !== null)
-          .sort((left, right) => {
-            return (left.pinnedAt?.getTime() ?? 0) - (right.pinnedAt?.getTime() ?? 0);
-          })
-          .map((prompt) => prompt.id);
-        const nextPinnedIds = computeNextPinnedIds(
-          currentPinnedIds,
-          promptId,
-          targetPrompt.pinnedAt !== null,
-          DEMO_MAX_PINNED_PROMPTS,
-        );
-        const nextPrompts = applyPinnedStateToPrompts(prev, nextPinnedIds);
-
-        if (nextPinnedIds.length === 0) {
-          localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
-        } else {
-          localStorage.setItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY, JSON.stringify(nextPinnedIds));
-        }
-
-        return sortPromptsByPinnedAt(nextPrompts, promptOrderMap);
-      });
-      return;
-    }
-
-    setFormError("");
-
-    startTransition(async () => {
-      const result = await togglePromptPinAction(promptId);
-      if (result.error) {
-        setFormError(result.error.message);
-        return;
-      }
-
-      setPrompts(result.data);
-    });
   };
 
   const showToast = useCallback((message: string, variant: ToastState["variant"]) => {
@@ -999,7 +894,7 @@ export const PromptVaultClient = ({
 
               <div className="flex gap-2">
                 <Button
-                  onClick={savePrompt}
+                  onClick={onSavePrompt}
                   disabled={isPending}
                   className="gap-2"
                   data-pv={PV_SELECTORS.saveButton}

@@ -1,11 +1,12 @@
 "use client";
 
-import iconSrc from "@/app/icon.png";
 import { usePromptCrud } from "@/components/prompts/hooks/use-prompt-crud";
 import { usePromptVaultPersistence } from "@/components/prompts/hooks/use-prompt-vault-persistence";
 import { useResizablePane } from "@/components/prompts/hooks/use-resizable-pane";
 import { getPlaceholderFieldSchema } from "@/components/prompts/placeholder-field-schema";
-import { PromptPlaceholderField } from "@/components/prompts/prompt-placeholder-field";
+import { PromptDetailPane } from "@/components/prompts/prompt-detail-pane";
+import { PromptListPane } from "@/components/prompts/prompt-list-pane";
+import { PromptVaultHeader } from "@/components/prompts/prompt-vault-header";
 import type {
   CopyHistoryEntry,
   PromptInputState,
@@ -23,49 +24,10 @@ import {
   toAbsoluteDateLabel,
   toRelativeDateLabel,
 } from "@/components/prompts/prompt-vault-utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ErrorText } from "@/components/ui/error-text";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import { PV_SELECTORS, getToastSelector } from "@/constants/ui-selectors";
 import { cn } from "@/lib/utils";
 import { parseTagCsv, promptSchema } from "@/schemas/prompt";
 import { PLACEHOLDER_REGEX, extractPlaceholders, renderTemplate } from "@/utils/placeholder";
-import {
-  Braces,
-  Copy,
-  Eraser,
-  History,
-  Pencil,
-  Pin,
-  Plus,
-  Save,
-  Search,
-  Trash2,
-} from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 import {
   type CSSProperties,
   type ReactNode,
@@ -75,8 +37,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-import { buttonVariants } from "@/components/ui/button";
 
 const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
   title: prompt?.title ?? "",
@@ -663,161 +623,42 @@ export const PromptVaultClient = ({
     return (placeholderValues[key] ?? "").trim().length === 0;
   });
 
+  const onCancelForm = () => {
+    if (selectedPrompt) {
+      setIsCreating(false);
+      setIsEditing(false);
+      selectPrompt(selectedPrompt);
+      return;
+    }
+    setIsCreating(false);
+  };
+
   return (
     <div className="h-screen overflow-hidden">
-      <header className="flex h-14 items-center justify-between border-b px-4">
-        <Link href={homeHref} className="flex items-center gap-2 font-semibold">
-          <Image
-            src={iconSrc}
-            alt=""
-            width={20}
-            height={20}
-            className="rounded-sm border-[0.5px] border-white/50"
-          />
-          <span>Prompt Vault</span>
-        </Link>
-        {isDemo && (
-          <span className="rounded-md border px-2 py-0.5 text-muted-foreground">
-            DEMO（閲覧のみ）
-          </span>
-        )}
-        <div className="flex items-center gap-2">
-          <div
-            data-pv={PV_SELECTORS.versionBanner}
-            className={cn(
-              "items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-900 shadow-sm dark:text-amber-200",
-              hasUpdateAvailable ? "flex" : "hidden",
-            )}
-          >
-            <p>新しいバージョンがあります。</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => window.location.reload()}
-              data-pv={PV_SELECTORS.versionReloadButton}
-            >
-              更新する
-            </Button>
-          </div>
-          {isDemo ? (
-            <Link href="/login" className={buttonVariants({ variant: "outline" })}>
-              ログインして使う
-            </Link>
-          ) : (
-            <Button variant="outline" onClick={logout} disabled={isPending}>
-              ログアウト
-            </Button>
-          )}
-        </div>
-      </header>
+      <PromptVaultHeader
+        homeHref={homeHref}
+        isDemo={isDemo}
+        hasUpdateAvailable={hasUpdateAvailable}
+        logout={logout}
+        isPending={isPending}
+      />
 
       <div
         className="grid h-[calc(100vh-56px)] min-h-0 overflow-hidden [grid-template-columns:280px_2px_minmax(0,1fr)]"
         style={layoutStyle}
       >
-        <aside
-          className="flex min-h-0 flex-col overflow-hidden border-r"
-          data-pv={PV_SELECTORS.leftPane}
-        >
-          <div className="space-y-3 p-3">
-            {!isDemo && (
-              <Button
-                className="w-full"
-                onClick={switchToCreateMode}
-                data-pv={PV_SELECTORS.createButton}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                新規作成
-              </Button>
-            )}
-            <div className="space-y-1">
-              <label htmlFor="prompt-search" className="text-xs font-medium text-muted-foreground">
-                検索
-              </label>
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="prompt-search"
-                  data-pv={PV_SELECTORS.searchInput}
-                  ref={searchInputRef}
-                  className="pl-8"
-                  placeholder="タイトル / タグで絞り込み"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      if (filteredPrompts.length === 0) {
-                        return;
-                      }
-                      const selectedInResults = filteredPrompts.find(
-                        (prompt) => prompt.id === selectedPromptId,
-                      );
-                      selectPrompt(selectedInResults ?? filteredPrompts[0]);
-                      searchInputRef.current?.blur();
-                      return;
-                    }
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      searchInputRef.current?.blur();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
-            <div className="space-y-2">
-              {filteredPrompts.map((prompt) => (
-                <div
-                  key={prompt.id}
-                  data-pv={PV_SELECTORS.searchResultItem}
-                  className={`w-full rounded-md border-l-2 p-2 text-left ${
-                    selectedPromptId === prompt.id && !isFormMode
-                      ? "border-transparent bg-accent"
-                      : prompt.pinnedAt
-                        ? "border-primary/40 bg-muted/30 hover:bg-muted"
-                        : "border-transparent hover:bg-muted"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => selectPrompt(prompt)}
-                    >
-                      <p className="line-clamp-1 text-sm font-medium">{prompt.title}</p>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {prompt.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag}>{tag}</Badge>
-                        ))}
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      data-pv={PV_SELECTORS.searchResultPinButton}
-                      className="rounded-sm p-1 text-muted-foreground hover:bg-accent"
-                      aria-label={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
-                      title={prompt.pinnedAt ? "ピン解除" : "ピン留め"}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        togglePin(prompt.id);
-                      }}
-                    >
-                      <Pin
-                        className={`h-4 w-4 ${
-                          prompt.pinnedAt ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </aside>
+        <PromptListPane
+          isDemo={isDemo}
+          search={search}
+          setSearch={setSearch}
+          searchInputRef={searchInputRef}
+          switchToCreateMode={switchToCreateMode}
+          filteredPrompts={filteredPrompts}
+          selectedPromptId={selectedPromptId}
+          isFormMode={isFormMode}
+          selectPrompt={selectPrompt}
+          togglePin={togglePin}
+        />
 
         <div
           data-pv={PV_SELECTORS.splitterHandle}
@@ -827,391 +668,48 @@ export const PromptVaultClient = ({
         />
 
         <main className="flex flex-1 flex-col overflow-hidden px-1 pt-2">
-          {!isFormMode && !selectedPrompt ? (
-            <div className="flex h-full items-center justify-center px-6 text-muted-foreground">
-              プロンプトを選択してください
-            </div>
-          ) : null}
-
-          {isFormMode ? (
-            <div className="mx-auto min-h-0 w-full max-w-4xl overflow-y-auto space-y-4">
-              <h2 className="text-xl font-bold">
-                {isCreating ? "新規プロンプト作成" : "プロンプト編集"}
-              </h2>
-
-              {formError ? (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {formError}
-                </div>
-              ) : null}
-
-              <div className="space-y-1">
-                <label htmlFor="title" className="text-sm font-medium">
-                  タイトル
-                </label>
-                <Input
-                  id="title"
-                  data-pv={PV_SELECTORS.titleInput}
-                  value={formState.title}
-                  onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, title: event.target.value }))
-                  }
-                />
-                <ErrorText>{fieldErrors.title}</ErrorText>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="body" className="text-sm font-medium">
-                  本文
-                </label>
-                <Textarea
-                  id="body"
-                  data-pv={PV_SELECTORS.bodyInput}
-                  rows={14}
-                  value={formState.body}
-                  onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, body: event.target.value }))
-                  }
-                />
-                <ErrorText>{fieldErrors.body}</ErrorText>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="tags" className="text-sm font-medium">
-                  タグ（カンマ区切り）
-                </label>
-                <Input
-                  id="tags"
-                  data-pv={PV_SELECTORS.tagsInput}
-                  placeholder="例: design, prompt, gpt"
-                  value={formState.tagsCsv}
-                  onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, tagsCsv: event.target.value }))
-                  }
-                />
-                <ErrorText>{fieldErrors.tags}</ErrorText>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={onSavePrompt}
-                  disabled={isPending}
-                  className="gap-2"
-                  data-pv={PV_SELECTORS.saveButton}
-                >
-                  {isPending ? <Spinner /> : <Save className="h-4 w-4" />}
-                  <span>保存</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (selectedPrompt) {
-                      setIsCreating(false);
-                      setIsEditing(false);
-                      selectPrompt(selectedPrompt);
-                    } else {
-                      setIsCreating(false);
-                    }
-                  }}
-                  disabled={isPending}
-                >
-                  キャンセル
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {!isFormMode && selectedPrompt ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              {formError ? (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {formError}
-                </div>
-              ) : null}
-
-              <div className="-ml-3 space-y-2 border-b bg-background pb-3 pl-6 pr-4">
-                <div className="min-w-0">
-                  <h2 className="text-2xl font-bold" data-pv={PV_SELECTORS.selectedTitle}>
-                    {selectedPrompt.title}
-                  </h2>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    {selectedPrompt.tags.map((tag) => (
-                      <Badge key={tag}>{tag}</Badge>
-                    ))}
-                  </div>
-                  {!isDemo ? (
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={startEdit}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        編集
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            削除
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              削除したプロンプトは復元できません。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel asChild>
-                              <Button variant="outline">キャンセル</Button>
-                            </AlertDialogCancel>
-                            <AlertDialogAction asChild>
-                              <Button
-                                variant="destructive"
-                                onClick={() => removePrompt(selectedPrompt.id)}
-                                disabled={isPending}
-                              >
-                                削除する
-                              </Button>
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div
-                className="grid min-h-0 flex-1 gap-0 pt-2 xl:grid-cols-[var(--pv-placeholder-pane-width,360px)_2px_minmax(0,1fr)]"
-                style={previewPaneLayoutStyle}
-              >
-                <section
-                  data-pv={PV_SELECTORS.placeholderPane}
-                  className="flex min-h-0 flex-col overflow-hidden rounded-l-md rounded-r-none border bg-muted/20 p-4"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Braces className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="font-medium">プレースホルダ入力</h3>
-                      <Badge variant="secondary">{placeholders.length}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearPlaceholderValues}
-                        disabled={!canClearPlaceholders}
-                        title="入力をすべて空にします"
-                        data-pv={PV_SELECTORS.clearPlaceholdersButton}
-                      >
-                        <Eraser className="mr-2 h-4 w-4" />
-                        全消去
-                      </Button>
-                    </div>
-                  </div>
-                  {placeholders.length > 0 ? (
-                    <>
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        「{"{{...}}"}」ごとの値を入力すると、右のプレビューに反映されます。
-                      </p>
-                      <ScrollArea className="mt-3 min-h-0 flex-1 pr-3">
-                        <div className="space-y-3">
-                          {placeholders.map((key) => (
-                            <PromptPlaceholderField
-                              key={key}
-                              placeholderKey={key}
-                              placeholderValues={placeholderValues}
-                              placeholderUndoValues={placeholderUndoValues}
-                              serviceInputMode={serviceInputMode}
-                              canFillPlaceholderExamples={canFillPlaceholderExamples}
-                              setActivePlaceholderKey={setActivePlaceholderKey}
-                              setPlaceholderValues={setPlaceholderValues}
-                              setServiceInputMode={setServiceInputMode}
-                              fillPlaceholderExamples={fillPlaceholderExamples}
-                              applyErrorLogsTransform={applyErrorLogsTransform}
-                              restoreErrorLogsValue={restoreErrorLogsValue}
-                            />
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </>
-                  ) : (
-                    <div className="mt-3 rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
-                      このプロンプトにはプレースホルダがありません。
-                    </div>
-                  )}
-                </section>
-
-                <div
-                  data-pv={PV_SELECTORS.previewSplitterHandle}
-                  onPointerDown={onPreviewSplitterPointerDown}
-                  className="relative hidden -mx-[3px] h-full w-2 cursor-col-resize justify-self-center before:absolute before:inset-y-0 before:left-1/2 before:w-[2px] before:-translate-x-1/2 before:bg-border/80 hover:before:bg-border xl:block"
-                  style={{ touchAction: "none" }}
-                  aria-hidden="true"
-                />
-
-                <section
-                  data-pv={PV_SELECTORS.previewPane}
-                  className="flex min-h-0 flex-col overflow-hidden rounded-l-none rounded-r-md border border-l-0 bg-muted/20 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-                    <div
-                      className="inline-flex rounded-md border bg-background/60 p-1"
-                      role="tablist"
-                      aria-label="プレビューと履歴"
-                    >
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeRightTab === "preview"}
-                        aria-controls="preview-rendered-panel"
-                        className={cn(
-                          "w-24 rounded px-3 py-1 text-center text-sm",
-                          activeRightTab === "preview"
-                            ? "bg-accent font-medium"
-                            : "text-muted-foreground",
-                        )}
-                        onClick={() => setActiveRightTab("preview")}
-                        data-pv={PV_SELECTORS.previewTab}
-                      >
-                        プレビュー
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeRightTab === "history"}
-                        aria-controls="history-panel"
-                        className={cn(
-                          "w-24 rounded px-3 py-1 text-center text-sm",
-                          activeRightTab === "history"
-                            ? "bg-accent font-medium"
-                            : "text-muted-foreground",
-                        )}
-                        onClick={() => setActiveRightTab("history")}
-                        data-pv={PV_SELECTORS.historyTab}
-                      >
-                        履歴
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    id="preview-rendered-panel"
-                    className={cn(
-                      "mt-3 min-h-0 flex-1 flex-col gap-2",
-                      activeRightTab === "preview" ? "flex" : "hidden",
-                    )}
-                  >
-                    <div className="flex h-9 items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyPlainText}
-                        title="プロンプト本文のみをコピーします"
-                        data-pv={PV_SELECTORS.copyBodyButton}
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        本文コピー
-                        <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                          ⌥C
-                        </kbd>
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className={buttonVariants({ variant: "outline", size: "sm" })}
-                          data-pv={PV_SELECTORS.copyMenuButton}
-                        >
-                          …
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              void copyMarkdownText();
-                            }}
-                            data-pv={PV_SELECTORS.copyMarkdownButton}
-                          >
-                            Markdown整形コピー
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              void copyOriginalText();
-                            }}
-                            data-pv={PV_SELECTORS.copyOriginalButton}
-                          >
-                            原文（テンプレ）コピー
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <ScrollArea
-                      data-pv={PV_SELECTORS.renderedOutput}
-                      className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
-                    >
-                      {renderedPreviewNodes}
-                    </ScrollArea>
-                  </div>
-
-                  <div
-                    id="history-panel"
-                    data-pv={PV_SELECTORS.historyPanel}
-                    className={cn(
-                      "mt-3 min-h-0 flex-1 flex-col gap-2",
-                      activeRightTab === "history" ? "flex" : "hidden",
-                    )}
-                  >
-                    {copyHistory ? (
-                      <>
-                        <div className="flex h-9 items-center justify-between gap-2">
-                          <p
-                            className="text-xs text-muted-foreground"
-                            title={toAbsoluteDateLabel(copyHistory.createdAt)}
-                            data-pv={PV_SELECTORS.historyCreatedAt}
-                          >
-                            保存日時: {toRelativeDateLabel(copyHistory.createdAt)}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={loadCopyHistory}
-                              data-pv={PV_SELECTORS.historyLoadButton}
-                              disabled={!copyHistory}
-                            >
-                              <History className="mr-2 h-4 w-4" />
-                              ロード
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={clearCopyHistory}
-                              data-pv={PV_SELECTORS.historyClearButton}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              履歴クリア
-                            </Button>
-                          </div>
-                        </div>
-                        <ScrollArea
-                          data-pv={PV_SELECTORS.historyRenderedOutput}
-                          className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
-                        >
-                          {renderedHistoryBody}
-                        </ScrollArea>
-                        <p className="text-xs text-muted-foreground">
-                          ※現在のテンプレに当てたプレビューです
-                        </p>
-                      </>
-                    ) : (
-                      <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
-                        このプロンプトの履歴はまだありません。
-                      </div>
-                    )}
-                  </div>
-                </section>
-              </div>
-            </div>
-          ) : null}
+          <PromptDetailPane
+            isFormMode={isFormMode}
+            selectedPrompt={selectedPrompt}
+            isCreating={isCreating}
+            formError={formError}
+            fieldErrors={fieldErrors}
+            formState={formState}
+            setFormState={setFormState}
+            onSavePrompt={onSavePrompt}
+            isPending={isPending}
+            onCancelForm={onCancelForm}
+            isDemo={isDemo}
+            startEdit={startEdit}
+            removePrompt={removePrompt}
+            previewPaneLayoutStyle={previewPaneLayoutStyle}
+            placeholders={placeholders}
+            clearPlaceholderValues={clearPlaceholderValues}
+            canClearPlaceholders={canClearPlaceholders}
+            placeholderValues={placeholderValues}
+            placeholderUndoValues={placeholderUndoValues}
+            serviceInputMode={serviceInputMode}
+            canFillPlaceholderExamples={canFillPlaceholderExamples}
+            setActivePlaceholderKey={setActivePlaceholderKey}
+            setPlaceholderValues={setPlaceholderValues}
+            setServiceInputMode={setServiceInputMode}
+            fillPlaceholderExamples={fillPlaceholderExamples}
+            applyErrorLogsTransform={applyErrorLogsTransform}
+            restoreErrorLogsValue={restoreErrorLogsValue}
+            onPreviewSplitterPointerDown={onPreviewSplitterPointerDown}
+            activeRightTab={activeRightTab}
+            setActiveRightTab={setActiveRightTab}
+            copyPlainText={copyPlainText}
+            copyMarkdownText={copyMarkdownText}
+            copyOriginalText={copyOriginalText}
+            renderedPreviewNodes={renderedPreviewNodes}
+            copyHistory={copyHistory}
+            toAbsoluteDateLabel={toAbsoluteDateLabel}
+            toRelativeDateLabel={toRelativeDateLabel}
+            loadCopyHistory={loadCopyHistory}
+            clearCopyHistory={clearCopyHistory}
+            renderedHistoryBody={renderedHistoryBody}
+          />
         </main>
       </div>
       {toast ? (

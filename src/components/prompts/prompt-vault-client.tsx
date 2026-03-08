@@ -1,6 +1,7 @@
 "use client";
 
 import iconSrc from "@/app/icon.png";
+import { usePromptVaultPersistence } from "@/components/prompts/hooks/use-prompt-vault-persistence";
 import { useResizablePane } from "@/components/prompts/hooks/use-resizable-pane";
 import { getPlaceholderFieldSchema } from "@/components/prompts/placeholder-field-schema";
 import { PromptPlaceholderField } from "@/components/prompts/prompt-placeholder-field";
@@ -16,10 +17,10 @@ import {
   SERVICE_PLACEHOLDER_KEY,
   applyPinnedStateToPrompts,
   computeNextPinnedIds,
+  getCopyHistoryStorageKey,
+  getPlaceholderValuesStorageKey,
   isAllPlaceholdersEmpty,
-  isRecordString,
   normalizeValuesByPlaceholders,
-  resolveDemoPinnedIdsFromStorage,
   sortPromptsByPinnedAt,
   toAbsoluteDateLabel,
   toRelativeDateLabel,
@@ -95,9 +96,6 @@ const toPromptInputState = (prompt?: PromptLike): PromptInputState => ({
 
 const LEFT_PANE_WIDTH_KEY = "pv:leftPaneWidthPx";
 const PLACEHOLDER_PANE_WIDTH_KEY = "pv:placeholderPaneWidthPx";
-const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
-const SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX = "pv:selectedPromptId:";
-const COPY_HISTORY_STORAGE_KEY_PREFIX = "pv:copyHistory:";
 const DEMO_PINNED_PROMPT_IDS_STORAGE_KEY = "pv:demoPinnedPromptIds";
 const DEMO_MAX_PINNED_PROMPTS = 6;
 const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -119,10 +117,6 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 };
 
-const getCopyHistoryStorageKey = (mode: PromptVaultMode, promptId: string): string => {
-  return `${COPY_HISTORY_STORAGE_KEY_PREFIX}${mode}:${promptId}`;
-};
-
 export const PromptVaultClient = ({
   initialPrompts,
   mode = "app",
@@ -134,15 +128,13 @@ export const PromptVaultClient = ({
 }) => {
   const isDemo = mode === "demo";
   const homeHref = isDemo ? "/demo" : "/app/prompts";
-  const placeholderValuesStorageKey = `${PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX}${mode}`;
-  const selectedPromptIdStorageKey = `${SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX}${mode}`;
+  const placeholderValuesStorageKey = getPlaceholderValuesStorageKey(mode);
 
   const [prompts, setPrompts] = useState<PromptLike[]>(initialPrompts);
   const [search, setSearch] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(
     initialPrompts[0]?.id ?? null,
   );
-  const [isSelectedPromptIdRestored, setIsSelectedPromptIdRestored] = useState(false);
 
   const [isCreating, setIsCreating] = useState(isDemo ? false : initialPrompts.length === 0);
   const [isEditing, setIsEditing] = useState(false);
@@ -239,96 +231,6 @@ export const PromptVaultClient = ({
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [hasUpdateAvailable, initialFrontendVersion]);
-
-  useEffect(() => {
-    if (!isDemo) {
-      return;
-    }
-
-    const raw = localStorage.getItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
-    if (!raw) {
-      setPrompts(sortPromptsByPinnedAt(initialPrompts, promptOrderMap));
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(raw);
-      const pinnedIds = resolveDemoPinnedIdsFromStorage(parsed, DEMO_MAX_PINNED_PROMPTS);
-      if (pinnedIds.length === 0) {
-        localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
-      } else {
-        const serializedPinnedIds = JSON.stringify(pinnedIds);
-        if (serializedPinnedIds !== raw) {
-          localStorage.setItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY, serializedPinnedIds);
-        }
-      }
-      const nextPrompts = applyPinnedStateToPrompts(initialPrompts, pinnedIds);
-      setPrompts(sortPromptsByPinnedAt(nextPrompts, promptOrderMap));
-    } catch {
-      localStorage.removeItem(DEMO_PINNED_PROMPT_IDS_STORAGE_KEY);
-      setPrompts(sortPromptsByPinnedAt(initialPrompts, promptOrderMap));
-    }
-  }, [initialPrompts, isDemo, promptOrderMap]);
-
-  useEffect(() => {
-    const raw = localStorage.getItem(placeholderValuesStorageKey);
-    if (!raw) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        localStorage.removeItem(placeholderValuesStorageKey);
-        return;
-      }
-
-      const nextValues = Object.fromEntries(
-        Object.entries(parsed).filter(
-          (entry): entry is [string, string] =>
-            typeof entry[0] === "string" && typeof entry[1] === "string",
-        ),
-      );
-      setPlaceholderValues(nextValues);
-    } catch {
-      localStorage.removeItem(placeholderValuesStorageKey);
-    }
-  }, [placeholderValuesStorageKey]);
-
-  useEffect(() => {
-    const storedSelectedPromptId = localStorage.getItem(selectedPromptIdStorageKey);
-    if (!storedSelectedPromptId) {
-      setIsSelectedPromptIdRestored(true);
-      return;
-    }
-    if (!prompts.some((prompt) => prompt.id === storedSelectedPromptId)) {
-      localStorage.removeItem(selectedPromptIdStorageKey);
-      setIsSelectedPromptIdRestored(true);
-      return;
-    }
-    setSelectedPromptId(storedSelectedPromptId);
-    setIsSelectedPromptIdRestored(true);
-  }, [prompts, selectedPromptIdStorageKey]);
-
-  useEffect(() => {
-    if (!isSelectedPromptIdRestored) {
-      return;
-    }
-    if (!selectedPromptId) {
-      localStorage.removeItem(selectedPromptIdStorageKey);
-      return;
-    }
-    localStorage.setItem(selectedPromptIdStorageKey, selectedPromptId);
-  }, [isSelectedPromptIdRestored, selectedPromptId, selectedPromptIdStorageKey]);
-
-  useEffect(() => {
-    if (Object.keys(placeholderValues).length === 0) {
-      localStorage.removeItem(placeholderValuesStorageKey);
-      return;
-    }
-
-    localStorage.setItem(placeholderValuesStorageKey, JSON.stringify(placeholderValues));
-  }, [placeholderValues, placeholderValuesStorageKey]);
 
   const serviceValue = placeholderValues[SERVICE_PLACEHOLDER_KEY];
 
@@ -446,48 +348,20 @@ export const PromptVaultClient = ({
     return nodes;
   }, [activePlaceholderKey, placeholderValues, previewBody]);
 
-  useEffect(() => {
-    if (!selectedPromptId) {
-      setCopyHistory(null);
-      return;
-    }
-
-    const historyStorageKey = getCopyHistoryStorageKey(mode, selectedPromptId);
-    const raw = localStorage.getItem(historyStorageKey);
-    if (!raw) {
-      setCopyHistory(null);
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        localStorage.removeItem(historyStorageKey);
-        setCopyHistory(null);
-        return;
-      }
-
-      const createdAt =
-        "createdAt" in parsed && typeof parsed.createdAt === "string" ? parsed.createdAt : null;
-      const title = "title" in parsed && typeof parsed.title === "string" ? parsed.title : null;
-      const values = "values" in parsed ? parsed.values : null;
-
-      if (!createdAt || !title || !isRecordString(values)) {
-        localStorage.removeItem(historyStorageKey);
-        setCopyHistory(null);
-        return;
-      }
-
-      setCopyHistory({
-        createdAt,
-        title,
-        values: normalizeValuesByPlaceholders(placeholders, values),
-      });
-    } catch {
-      localStorage.removeItem(historyStorageKey);
-      setCopyHistory(null);
-    }
-  }, [mode, placeholders, selectedPromptId]);
+  const { isSelectedPromptIdRestored } = usePromptVaultPersistence({
+    mode,
+    isDemo,
+    initialPrompts,
+    promptOrderMap,
+    prompts,
+    selectedPromptId,
+    setSelectedPromptId,
+    placeholderValues,
+    setPlaceholderValues,
+    placeholders,
+    setCopyHistory,
+    setPrompts,
+  });
 
   useEffect(() => {
     if (previousSelectedPromptIdRef.current === selectedPromptId) {

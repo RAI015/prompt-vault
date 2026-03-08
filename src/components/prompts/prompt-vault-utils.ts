@@ -1,4 +1,4 @@
-import type { PromptLike } from "@/components/prompts/prompt-vault-types";
+import type { PromptLike, PromptVaultMode } from "@/components/prompts/prompt-vault-types";
 
 const LONGTEXT_SUFFIXES = ["logs", "text", "details", "content", "body", "notes"] as const;
 const LONGTEXT_RE = new RegExp(`(^|_)(${LONGTEXT_SUFFIXES.join("|")})($|_)`, "i");
@@ -6,6 +6,9 @@ const LONGTEXT_RE = new RegExp(`(^|_)(${LONGTEXT_SUFFIXES.join("|")})($|_)`, "i"
 export const LOG_TRIM_LINE_COUNT = 50;
 export const SERVICE_PLACEHOLDER_KEY = "service";
 export const SERVICE_OTHER_VALUE = "other";
+const PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX = "pv:placeholders:";
+const SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX = "pv:selectedPromptId:";
+const COPY_HISTORY_STORAGE_KEY_PREFIX = "pv:copyHistory:";
 
 export const isLongTextPlaceholder = (key: string): boolean => LONGTEXT_RE.test(key);
 
@@ -185,4 +188,16 @@ export const sortPromptsByPinnedAt = (
       (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER)
     );
   });
+};
+
+export const getPlaceholderValuesStorageKey = (mode: PromptVaultMode): string => {
+  return `${PLACEHOLDER_VALUES_STORAGE_KEY_PREFIX}${mode}`;
+};
+
+export const getSelectedPromptIdStorageKey = (mode: PromptVaultMode): string => {
+  return `${SELECTED_PROMPT_ID_STORAGE_KEY_PREFIX}${mode}`;
+};
+
+export const getCopyHistoryStorageKey = (mode: PromptVaultMode, promptId: string): string => {
+  return `${COPY_HISTORY_STORAGE_KEY_PREFIX}${mode}:${promptId}`;
 };

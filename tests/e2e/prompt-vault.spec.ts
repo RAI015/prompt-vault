@@ -5,9 +5,10 @@ import {
   getPlaceholderLogActionSelector,
   getPlaceholderLogLineCountSelector,
 } from "../../src/constants/ui-selectors";
-
-const testUserEmail = process.env.TEST_USER_EMAIL;
-const testUserPassword = process.env.TEST_USER_PASSWORD;
+import { loginAsTestUser } from "./helpers/auth";
+import { expectPinnedOrder, togglePinInItem } from "./helpers/pin";
+import { fillPlaceholder, selectPlaceholderOption } from "./helpers/placeholders";
+import { createPrompt } from "./helpers/prompts";
 
 test.describe("Prompt Vault E2E", () => {
   test("メール認証でログインしてプロンプトを作成し、置換とコピーを確認する", async ({ page }) => {
@@ -22,21 +23,8 @@ test.describe("Prompt Vault E2E", () => {
     const title = `E2E Prompt ${unique}`;
     const body = "求人: {{JOB_DESC}}\\nログ: {{error_logs}}";
 
-    await page.goto("/login");
-    await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
-    await page.getByLabel("パスワード").fill(testUserPassword ?? "");
-    await page.getByRole("button", { name: "メールでログイン" }).click();
-    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
-
-    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
-
-    await page.getByTestId(PV_SELECTORS.createButton).click();
-    await page.getByTestId(PV_SELECTORS.titleInput).fill(title);
-    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
-    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, test");
-    await page.getByTestId(PV_SELECTORS.saveButton).click();
-
-    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(title);
+    await loginAsTestUser(page);
+    await createPrompt(page, { title, body, tagsCsv: "e2e, test" });
     await expect(page.getByTestId(getPlaceholderInputSelector("JOB_DESC"))).toBeVisible();
     await expect(
       page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: title }),
@@ -49,8 +37,8 @@ test.describe("Prompt Vault E2E", () => {
       page.getByTestId(getPlaceholderLogActionSelector("error_logs", "head")),
     ).toBeVisible();
 
-    await page.getByTestId(getPlaceholderInputSelector("JOB_DESC")).fill("フロントエンド開発");
-    await page.getByTestId(getPlaceholderInputSelector("error_logs")).fill("エラーログA");
+    await fillPlaceholder(page, "JOB_DESC", "フロントエンド開発");
+    await fillPlaceholder(page, "error_logs", "エラーログA");
 
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText(
       "求人: フロントエンド開発",
@@ -76,19 +64,8 @@ test.describe("Prompt Vault E2E", () => {
     const fullLog = Array.from({ length: 120 }, (_, index) => `line-${index + 1}`).join("\n");
     const head50 = Array.from({ length: 50 }, (_, index) => `line-${index + 1}`).join("\n");
 
-    await page.goto("/login");
-    await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
-    await page.getByLabel("パスワード").fill(testUserPassword ?? "");
-    await page.getByRole("button", { name: "メールでログイン" }).click();
-    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
-
-    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
-
-    await page.getByTestId(PV_SELECTORS.createButton).click();
-    await page.getByTestId(PV_SELECTORS.titleInput).fill(title);
-    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
-    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, error-logs");
-    await page.getByTestId(PV_SELECTORS.saveButton).click();
+    await loginAsTestUser(page);
+    await createPrompt(page, { title, body, tagsCsv: "e2e, error-logs" });
 
     const placeholderKey = "error_logs";
     const logInput = page.getByTestId(getPlaceholderInputSelector(placeholderKey));
@@ -117,12 +94,7 @@ test.describe("Prompt Vault E2E", () => {
   });
 
   test("左ペインの幅をドラッグで変更できる", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
-    await page.getByLabel("パスワード").fill(testUserPassword ?? "");
-    await page.getByRole("button", { name: "メールでログイン" }).click();
-    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
-    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
+    await loginAsTestUser(page);
 
     const leftPane = page.getByTestId(PV_SELECTORS.leftPane);
     const handle = page.getByTestId(PV_SELECTORS.splitterHandle);
@@ -240,11 +212,9 @@ test.describe("Prompt Vault E2E", () => {
     });
     expect(placeholderScrollTop).toBeGreaterThan(0);
 
-    await input.fill("E2Eデモ入力");
-    await envSelect.click();
-    await page.getByRole("option", { name: "stg" }).click();
-    await prioritySelect.click();
-    await page.getByRole("option", { name: "high" }).click();
+    await fillPlaceholder(page, key, "E2Eデモ入力");
+    await selectPlaceholderOption(page, "env", "stg");
+    await selectPlaceholderOption(page, "priority", "high");
     await fillExampleButton.click();
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("E2Eデモ入力");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).not.toContainText("{{goal_text}}");
@@ -302,7 +272,7 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(bugPromptTitle);
     await expect(page.getByTestId(getPlaceholderInputSelector(key))).toHaveValue("");
     await expect(errorLogsInput).toHaveValue("");
-    await errorLogsInput.fill("手入力ログ");
+    await fillPlaceholder(page, "error_logs", "手入力ログ");
     await expect(fillExampleButton).toBeDisabled();
     await expect(errorLogsInput).toHaveValue("手入力ログ");
     await expect(page.getByTestId(PV_SELECTORS.renderedOutput)).toContainText("手入力ログ");
@@ -392,9 +362,8 @@ test.describe("Prompt Vault E2E", () => {
     const envSelect = page.getByTestId(getPlaceholderInputSelector("env"));
     const errorLogsInput = page.getByTestId(getPlaceholderInputSelector("error_logs"));
     await expect(input).toBeVisible();
-    await input.fill(firstValue);
-    await envSelect.click();
-    await page.getByRole("option", { name: "stg" }).click();
+    await fillPlaceholder(page, key, firstValue);
+    await selectPlaceholderOption(page, "env", "stg");
 
     await page.getByTestId(PV_SELECTORS.copyBodyButton).click();
     await expect(page.getByTestId(PV_SELECTORS.toastSuccess)).toContainText("本文をコピーしました");
@@ -493,47 +462,26 @@ test.describe("Prompt Vault E2E", () => {
     const titleB = `Pin B ${unique}`;
     const body = "pin test body";
 
-    await page.goto("/login");
-    await page.getByLabel("メールアドレス").fill(testUserEmail ?? "");
-    await page.getByLabel("パスワード").fill(testUserPassword ?? "");
-    await page.getByRole("button", { name: "メールでログイン" }).click();
-    await page.waitForURL("**/app/prompts", { timeout: 10_000 });
-
-    await expect(page.getByTestId(PV_SELECTORS.createButton)).toBeVisible({ timeout: 10_000 });
-
-    await page.getByTestId(PV_SELECTORS.createButton).click();
-    await page.getByTestId(PV_SELECTORS.titleInput).fill(titleA);
-    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
-    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, pin");
-    await page.getByTestId(PV_SELECTORS.saveButton).click();
-    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleA);
-
-    await page.getByTestId(PV_SELECTORS.createButton).click();
-    await page.getByTestId(PV_SELECTORS.titleInput).fill(titleB);
-    await page.getByTestId(PV_SELECTORS.bodyInput).fill(body);
-    await page.getByTestId(PV_SELECTORS.tagsInput).fill("e2e, pin");
-    await page.getByTestId(PV_SELECTORS.saveButton).click();
-    await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleB);
+    await loginAsTestUser(page);
+    await createPrompt(page, { title: titleA, body, tagsCsv: "e2e, pin" });
+    await createPrompt(page, { title: titleB, body, tagsCsv: "e2e, pin" });
 
     const itemB = page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: titleB });
-    await itemB.getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await togglePinInItem(itemB);
     await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleB);
     await page.getByTestId(PV_SELECTORS.searchInput).fill(String(unique));
 
     const itemsAfterPinB = page.getByTestId(PV_SELECTORS.searchResultItem);
-    await expect(itemsAfterPinB).toHaveCount(2, { timeout: 10_000 });
-    await expect(itemsAfterPinB.nth(0)).toContainText(titleB, { timeout: 10_000 });
+    await expectPinnedOrder(itemsAfterPinB, [titleB, titleA]);
 
     const itemA = page.getByTestId(PV_SELECTORS.searchResultItem).filter({ hasText: titleA });
     await itemA.click();
     await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleA);
-    await itemA.getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await togglePinInItem(itemA);
     await expect(page.getByTestId(PV_SELECTORS.selectedTitle)).toHaveText(titleA);
 
     const itemsAfterPinA = page.getByTestId(PV_SELECTORS.searchResultItem);
-    await expect(itemsAfterPinA).toHaveCount(2, { timeout: 10_000 });
-    await expect(itemsAfterPinA.nth(0)).toContainText(titleA, { timeout: 10_000 });
-    await expect(itemsAfterPinA.nth(1)).toContainText(titleB, { timeout: 10_000 });
+    await expectPinnedOrder(itemsAfterPinA, [titleA, titleB]);
 
     await page.goto("/demo");
 
@@ -542,17 +490,17 @@ test.describe("Prompt Vault E2E", () => {
     await expect(page.getByTestId(PV_SELECTORS.searchResultPinButton).first()).toBeVisible();
 
     const demoFirstTitleBefore = await demoItems.nth(0).textContent();
-    await demoItems.nth(1).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await togglePinInItem(demoItems.nth(1));
     await expect(demoItems.nth(0)).not.toContainText(demoFirstTitleBefore ?? "");
 
     const demoPinnedTitle = await demoItems.nth(0).textContent();
-    await demoItems.nth(0).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await togglePinInItem(demoItems.nth(0));
     await expect(demoItems.nth(0)).not.toContainText(demoPinnedTitle ?? "");
 
     const demoSixthTitle = await demoItems.nth(5).textContent();
     const demoSecondTitle = await demoItems.nth(1).textContent();
-    await demoItems.nth(5).getByTestId(PV_SELECTORS.searchResultPinButton).click();
-    await demoItems.nth(2).getByTestId(PV_SELECTORS.searchResultPinButton).click();
+    await togglePinInItem(demoItems.nth(5));
+    await togglePinInItem(demoItems.nth(2));
     await expect(demoItems.nth(0)).toContainText(demoSecondTitle ?? "");
     await expect(demoItems.nth(1)).toContainText(demoSixthTitle ?? "");
 

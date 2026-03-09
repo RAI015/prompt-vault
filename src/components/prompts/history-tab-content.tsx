@@ -21,7 +21,7 @@ export const HistoryTabContent = ({
   toAbsoluteDateLabel,
   toRelativeDateLabel,
   loadCopyHistory,
-  clearCopyHistory,
+  clearCopyHistory,w
   renderedHistoryBody,
 }: HistoryTabContentProps) => {
   return (

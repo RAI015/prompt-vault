@@ -1,3 +1,5 @@
+import { HistoryTabContent } from "@/components/prompts/history-tab-content";
+import { PreviewTabContent } from "@/components/prompts/preview-tab-content";
 import { PromptPlaceholderField } from "@/components/prompts/prompt-placeholder-field";
 import type {
   CopyHistoryEntry,
@@ -16,13 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/error-text";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,7 +26,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { PV_SELECTORS } from "@/constants/ui-selectors";
 import { cn } from "@/lib/utils";
-import { Braces, Copy, Eraser, History, Pencil, Save, Trash2 } from "lucide-react";
+import { Braces, Eraser, Pencil, Save, Trash2 } from "lucide-react";
 import type {
   CSSProperties,
   Dispatch,
@@ -379,120 +375,23 @@ export const PromptDetailPane = ({
                 </div>
               </div>
 
-              <div
-                id="preview-rendered-panel"
-                className={cn(
-                  "mt-3 min-h-0 flex-1 flex-col gap-2",
-                  activeRightTab === "preview" ? "flex" : "hidden",
-                )}
-              >
-                <div className="flex h-9 items-center justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      void copyPlainText();
-                    }}
-                    title="プロンプト本文のみをコピーします"
-                    data-pv={PV_SELECTORS.copyBodyButton}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    本文コピー
-                    <kbd className="ml-2 rounded border px-1 text-[10px] leading-4 text-muted-foreground">
-                      ⌥C
-                    </kbd>
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                      data-pv={PV_SELECTORS.copyMenuButton}
-                    >
-                      …
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          void copyMarkdownText();
-                        }}
-                        data-pv={PV_SELECTORS.copyMarkdownButton}
-                      >
-                        Markdown整形コピー
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          void copyOriginalText();
-                        }}
-                        data-pv={PV_SELECTORS.copyOriginalButton}
-                      >
-                        原文（テンプレ）コピー
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <ScrollArea
-                  data-pv={PV_SELECTORS.renderedOutput}
-                  className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
-                >
-                  {renderedPreviewNodes}
-                </ScrollArea>
-              </div>
+              <PreviewTabContent
+                activeRightTab={activeRightTab}
+                copyPlainText={copyPlainText}
+                copyMarkdownText={copyMarkdownText}
+                copyOriginalText={copyOriginalText}
+                renderedPreviewNodes={renderedPreviewNodes}
+              />
 
-              <div
-                id="history-panel"
-                data-pv={PV_SELECTORS.historyPanel}
-                className={cn(
-                  "mt-3 min-h-0 flex-1 flex-col gap-2",
-                  activeRightTab === "history" ? "flex" : "hidden",
-                )}
-              >
-                {copyHistory ? (
-                  <>
-                    <div className="flex h-9 items-center justify-between gap-2">
-                      <p
-                        className="text-xs text-muted-foreground"
-                        title={toAbsoluteDateLabel(copyHistory.createdAt)}
-                        data-pv={PV_SELECTORS.historyCreatedAt}
-                      >
-                        保存日時: {toRelativeDateLabel(copyHistory.createdAt)}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={loadCopyHistory}
-                          data-pv={PV_SELECTORS.historyLoadButton}
-                          disabled={!copyHistory}
-                        >
-                          <History className="mr-2 h-4 w-4" />
-                          ロード
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={clearCopyHistory}
-                          data-pv={PV_SELECTORS.historyClearButton}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          履歴クリア
-                        </Button>
-                      </div>
-                    </div>
-                    <ScrollArea
-                      data-pv={PV_SELECTORS.historyRenderedOutput}
-                      className="min-h-0 flex-1 whitespace-pre-wrap rounded-md bg-background/60 p-4"
-                    >
-                      {renderedHistoryBody}
-                    </ScrollArea>
-                    <p className="text-xs text-muted-foreground">
-                      ※現在のテンプレに当てたプレビューです
-                    </p>
-                  </>
-                ) : (
-                  <div className="rounded-md border border-dashed bg-background/60 p-4 text-sm text-muted-foreground">
-                    このプロンプトの履歴はまだありません。
-                  </div>
-                )}
-              </div>
+              <HistoryTabContent
+                activeRightTab={activeRightTab}
+                copyHistory={copyHistory}
+                toAbsoluteDateLabel={toAbsoluteDateLabel}
+                toRelativeDateLabel={toRelativeDateLabel}
+                loadCopyHistory={loadCopyHistory}
+                clearCopyHistory={clearCopyHistory}
+                renderedHistoryBody={renderedHistoryBody}
+              />
             </section>
           </div>
         </div>

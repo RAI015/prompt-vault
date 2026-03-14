@@ -1,5 +1,9 @@
 # Prompt Vault MVP
 
+[![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
+[![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)
+[![e2e](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml)
+
 個人用 Prompt Vault（開発テンプレ特化）
 AI Agent向けの実装依頼 / BUG切り分け / PRレビュー / E2E調査を “作業プロトコル” として素早く呼び出して使う。
 
@@ -8,11 +12,6 @@ AI Agent向けの実装依頼 / BUG切り分け / PRレビュー / E2E調査を 
 - `/` で検索フォーカス、Enterで確定→すぐコピー導線
 - placeholder入力→生成結果（本文 / Markdown）をコピー
 - Playwright E2E（`data-pv` セレクタ集約）で回帰を担保
-
-
-[![quality](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/quality.yml)
-[![gitleaks](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/gitleaks.yml)
-[![e2e](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml)
 
 ## 使用技術スタック
 

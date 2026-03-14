@@ -26,6 +26,52 @@ AI Agent向けの実装依頼 / BUG切り分け / PRレビュー / E2E調査を 
 - パッケージ管理: pnpm
 - インフラ: Vercel
 
+## アーキテクチャ
+
+```mermaid
+flowchart TD
+  B[Browser]
+  UI[Next.js App Router<br/>Client Components]
+  SA[Server Actions / Route Handlers]
+  SV[Service Layer<br/>auth-service / prompt-service]
+  RP[Repository Layer]
+  DB[(Supabase Postgres)]
+  AU[Supabase Auth]
+
+  B --> UI
+  UI --> SA
+  SA --> SV
+  SV --> RP
+  RP --> DB
+  SA --> AU
+```
+
+主な実装ポイント:
+
+- Prompt操作: `src/server/actions/prompt-actions.ts` → `src/server/services/prompt-service.ts` → `src/server/repositories/prompt-repository.ts`
+- 認証同期: `src/app/auth/callback/route.ts` → `src/server/services/auth-service.ts`
+- Route Handler（内部用途）: `src/app/api/version/route.ts`
+
+## API / データアクセス（現状）
+
+- 公開APIは最小構成。主要な業務操作（Prompt CRUD）は Server Actions 経由で実装
+- `GET /api/version`
+  - フロントエンドの表示バージョンを返す
+- `GET /auth/callback`
+  - Supabase OAuthコールバックを処理し、allowlist判定と `AppUser` 同期を行う
+- Prompt CRUD
+  - 現状は REST API を増やさず、Server Actions 経由で実装
+  - 理由: App Router と同居させて認可チェック（ownerId）と再検証（revalidatePath）を近い場所で管理するため
+
+## 設計判断
+
+- Next.js（App Router）の採用理由
+  - 画面とサーバー処理（Server Actions / Route Handlers）を1つのコードベースで管理し、変更点を追いやすくするため
+- Prisma + Supabase Postgres の採用理由
+  - Supabaseの運用性（Auth/マネージドPostgres）と Prisma の移行管理・クエリ保守性を両立するため
+- Service / Repository 分離の採用理由
+  - 認証・認可・業務ルール（Service）とDBアクセス（Repository）を分け、影響範囲を小さくレビューしやすくするため
+
 ## 動作要件
 
 - Node.js: 22系（CIも `node-version: 22`）

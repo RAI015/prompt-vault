@@ -5,6 +5,7 @@
 [![e2e](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml/badge.svg)](https://github.com/RAI015/prompt-vault/actions/workflows/e2e.yml)
 
 個人用 Prompt Vault（開発テンプレ特化）
+
 AI Agent向けの実装依頼 / BUG切り分け / PRレビュー / E2E調査を “作業プロトコル” として素早く呼び出して使う。
 
 🔗 Demo（閲覧のみ／編集・保存不可）: https://prompt-vault-gilt.vercel.app/demo
@@ -16,7 +17,7 @@ AI Agent向けの実装依頼 / BUG切り分け / PRレビュー / E2E調査を 
 ## 使用技術スタック
 
 - フロントエンド: Next.js（App Router）, React, TypeScript
-- UI: Tailwind CSS, shadcn-ui
+- UI: Tailwind CSS, shadcn/ui
 - 認証/DB: Supabase Auth, Supabase Postgres
 - ORM: Prisma
 - バリデーション: Zod
@@ -51,7 +52,7 @@ flowchart TD
 - 認証同期: `src/app/auth/callback/route.ts` → `src/server/services/auth-service.ts`
 - Route Handler（内部用途）: `src/app/api/version/route.ts`
 
-## API / データアクセス（現状）
+## API / データアクセス
 
 - 公開APIは最小構成。主要な業務操作（Prompt CRUD）は Server Actions 経由で実装
 - `GET /api/version`
@@ -64,11 +65,11 @@ flowchart TD
 
 ## 設計判断
 
-- Next.js（App Router）の採用理由
+- Why Next.js（App Router）
   - 画面とサーバー処理（Server Actions / Route Handlers）を1つのコードベースで管理し、変更点を追いやすくするため
-- Prisma + Supabase Postgres の採用理由
+- Why Prisma + Supabase Postgres
   - Supabaseの運用性（Auth/マネージドPostgres）と Prisma の移行管理・クエリ保守性を両立するため
-- Service / Repository 分離の採用理由
+- Why Service / Repository 分離
   - 認証・認可・業務ルール（Service）とDBアクセス（Repository）を分け、影響範囲を小さくレビューしやすくするため
 
 ## 動作要件
@@ -149,12 +150,6 @@ pnpm dev
 ```
 
 アプリ起動後: `http://localhost:3000`
-
-## キーボードショートカット
-
-- `/`: 検索欄にフォーカス
-- `Enter`（検索欄）: 選択中（検索結果内）または先頭テンプレを開き、検索欄は `blur`
-- `⌥C`: 生成結果をコピー（`input` / `textarea` / `contenteditable` フォーカス中は発火しない）
 
 ## 2. 環境変数の設定
 

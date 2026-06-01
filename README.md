@@ -92,7 +92,7 @@ CI（GitHub Actions）:
 
 - `quality`: push / pull_request で `pnpm prisma:generate` / `pnpm biome:check` / `pnpm build` を実行（build用のダミー環境変数を設定、`.github/workflows/quality.yml`）
 - `gitleaks`: push / pull_request で常時実行（`.github/workflows/gitleaks.yml`）
-- `e2e`: push / pull_request / manual 実行。必要Secretsが揃っている場合のみ実行（`.github/workflows/e2e.yml`）
+- `e2e`: push / pull_request / manual 実行。Repository variable `CI_E2E_ENABLED=true` かつ必要Secretsが揃っている場合のみ実行（`.github/workflows/e2e.yml`）
 - `cleanup-ci-db`: manual 実行。CI用DBのテストデータを削除（`.github/workflows/cleanup-ci-db.yml`）
 
 `cleanup-ci-db` に必要な Secrets:
@@ -103,6 +103,9 @@ CI（GitHub Actions）:
 
 `e2e` に必要な Secrets（DB関連）:
 
+- Repository variable `CI_E2E_ENABLED`
+  - `true` の場合のみ E2E を実行する
+  - 未設定または `true` 以外の場合は、CI用DB停止中でも workflow は成功扱いで skip する
 - `CI_DATABASE_URL`
   - CI用Supabase DBの接続URLを設定する
   - `e2e.yml` では `pnpm prisma migrate deploy` と `pnpm test:e2e` の両方で使う

@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      CI_E2E_ENABLED: ${{ vars.CI_E2E_ENABLED }}
       DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -23,6 +24,13 @@ jobs:
       - name: Check required secrets
         id: precheck
         run: |
+          if [ "${CI_E2E_ENABLED}" != "true" ]; then
+            echo "E2E is disabled. Set repository variable CI_E2E_ENABLED=true to run it."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "reason=disabled" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           missing=0
           for v in DATABASE_URL NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY ALLOW_EMAILS TEST_USER_EMAIL TEST_USER_PASSWORD; do
             if [ -z "${!v}" ]; then
@@ -34,10 +42,11 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing-secrets" >> "$GITHUB_OUTPUT"
           fi
-      - name: Skip E2E (secrets are missing)
+      - name: Skip E2E
         if: ${{ steps.precheck.outputs.ready != 'true' }}
-        run: echo "Skipping E2E because required secrets are not configured."
+        run: echo "Skipping E2E because precheck result is '${{ steps.precheck.outputs.reason }}'."
       - uses: pnpm/action-setup@v4
         if: ${{ steps.precheck.outputs.ready == 'true' }}
         with:
